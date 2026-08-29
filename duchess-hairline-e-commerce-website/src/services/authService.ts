@@ -21,7 +21,22 @@ export async function isAdmin(user: User | null) {
   return snap.exists() && snap.data()?.role === 'admin' && snap.data()?.active === true;
 }
 
-async function requireAdmin(user: User) {
+export async function signInWithEmail(email: string, password: string) {
+  if (!auth) throw new Error('Firebase is not configured.');
+  const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+  return credential.user;
+}
+
+export async function signInWithGoogle() {
+  if (!auth) throw new Error('Firebase is not configured.');
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const credential = await signInWithPopup(auth, provider);
+  return credential.user;
+}
+
+export async function adminSignIn(email: string, password: string) {
+  const user = await signInWithEmail(email, password);
   if (!(await isAdmin(user))) {
     const uid = user.uid;
     await signOut(auth!);
@@ -30,36 +45,25 @@ async function requireAdmin(user: User) {
   return user;
 }
 
-export async function adminSignIn(email: string, password: string) {
-  if (!auth) throw new Error('Firebase is not configured.');
-  const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
-  return requireAdmin(credential.user);
-}
-
 export async function adminSignInWithGoogle() {
-  if (!auth) throw new Error('Firebase is not configured.');
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  const credential = await signInWithPopup(auth, provider);
-  return requireAdmin(credential.user);
+  const user = await signInWithGoogle();
+  if (!(await isAdmin(user))) {
+    const uid = user.uid;
+    await signOut(auth!);
+    throw new Error(`Google account authenticated, but it is not an admin. UID: ${uid}`);
+  }
+  return user;
 }
 
 export async function registerWithEmail(email: string, password: string) {
   if (!auth) throw new Error('Firebase is not configured.');
   const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-  const uid = credential.user.uid;
-  await signOut(auth);
-  return { uid, email: credential.user.email ?? email.trim() };
+  return { uid: credential.user.uid, email: credential.user.email ?? email.trim() };
 }
 
 export async function registerWithGoogle() {
-  if (!auth) throw new Error('Firebase is not configured.');
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  const credential = await signInWithPopup(auth, provider);
-  const result = { uid: credential.user.uid, email: credential.user.email ?? '' };
-  await signOut(auth);
-  return result;
+  const user = await signInWithGoogle();
+  return { uid: user.uid, email: user.email ?? '' };
 }
 
 export async function adminSignOut() {
