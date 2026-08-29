@@ -47,23 +47,37 @@ async function firebaseProducts(queryValue: ProductQuery = {}): Promise<Product[
   let q = query(collection(db, 'products'));
   if (queryValue.availableOnly) q = query(collection(db, 'products'), where('available', '==', true));
   const snap = await getDocs(q);
-  // Keep the original catalog visible until the admin has populated Firestore.
-  // Once Firestore contains products, it becomes the single live source of truth.
+  // Firestore is the live source of truth once products exist. If the collection is
+  // empty, retain the original curated catalog until the admin publishes products.
   const items = snap.empty ? productSeed : snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
   return applyQuery(items, queryValue);
 }
 
 export async function listProducts(queryValue: ProductQuery = {}): Promise<Product[]> {
   if (hasRemoteApi) return request<Product[]>(`/products${toSearchParams(queryValue)}`);
-  if (firebaseConfigured) return firebaseProducts(queryValue);
+  if (firebaseConfigured) {
+    try {
+      return await firebaseProducts(queryValue);
+    } catch (error) {
+      // Never leave the public collection blank because of a transient Firebase
+      // permission/network problem. The curated seed remains a safe read-only fallback.
+      console.warn('Firestore product read failed; showing the curated catalog fallback.', error);
+      return applyQuery(productSeed, queryValue);
+    }
+  }
   return applyQuery(productSeed, queryValue);
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
   if (hasRemoteApi) return request<Product | null>(`/products/${encodeURIComponent(id)}`);
   if (firebaseConfigured && db) {
-    const items = await firebaseProducts();
-    return items.find(p => p.id === id) ?? null;
+    try {
+      const items = await firebaseProducts();
+      return items.find(p => p.id === id) ?? productSeed.find(p => p.id === id) ?? null;
+    } catch (error) {
+      console.warn('Firestore product read failed; using the curated catalog fallback.', error);
+      return productSeed.find(p => p.id === id) ?? null;
+    }
   }
   return productSeed.find(p => p.id === id) ?? null;
 }
