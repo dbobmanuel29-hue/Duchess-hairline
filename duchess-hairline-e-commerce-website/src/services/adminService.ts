@@ -1,4 +1,4 @@
-import { collection, addDoc, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { productSeed } from '../data/products.seed';
 import type { Product } from '../types';
@@ -18,12 +18,20 @@ async function seedCatalogIfEmpty() {
 
 export async function adminListProducts(): Promise<Product[]> {
   const firestore = requireDb();
-  let snapshot = await getDocs(query(collection(firestore, 'products'), orderBy('createdAt', 'desc')));
+  // Do not require an orderBy index here. Older product documents may not have
+  // createdAt yet, and a missing field/index should never make the catalog vanish.
+  let snapshot = await getDocs(collection(firestore, 'products'));
   if (snapshot.empty) {
     await seedCatalogIfEmpty();
     snapshot = await getDocs(collection(firestore, 'products'));
   }
-  return snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Product));
+  return snapshot.docs
+    .map(item => ({ id: item.id, ...item.data() } as Product))
+    .sort((a, b) => {
+      const aTime = (a as Product & { createdAt?: { toMillis?: () => number } }).createdAt?.toMillis?.() ?? 0;
+      const bTime = (b as Product & { createdAt?: { toMillis?: () => number } }).createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
 }
 
 export async function adminCreateProduct(product: Omit<Product, 'id'>) {
