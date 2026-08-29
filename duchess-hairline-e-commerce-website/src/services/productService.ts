@@ -4,12 +4,75 @@ import { hasRemoteApi, request } from './http';
 import { db, firebaseConfigured } from './firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
-function matchesSearch(product: Product, search: string): boolean { const terms=search.toLowerCase().trim().split(/\s+/).filter(Boolean); if(!terms.length)return true; const haystack=[product.name,product.category,product.categoryLabel,product.description,product.texture,product.laceType,product.hairType,product.length,product.badge].filter(Boolean).join(' ').toLowerCase().replace(/-/g,' '); return terms.every(term=>haystack.includes(term.replace(/-/g,' '))); }
-function sortProducts(items: Product[], sort: SortOption='featured'): Product[] { const sorted=[...items]; switch(sort){case'newest':return[...sorted.filter(p=>p.newArrival),...sorted.filter(p=>!p.newArrival)];case'price-asc':return sorted.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity));case'price-desc':return sorted.sort((a,b)=>(b.price??-Infinity)-(a.price??-Infinity));default:return sorted.sort((a,b)=>Number(b.featured)-Number(a.featured));} }
-function applyQuery(items: Product[], queryValue: ProductQuery): Product[]{let result=items;if(queryValue.search)result=result.filter(p=>matchesSearch(p,queryValue.search as string));if(queryValue.category==='new-arrivals')result=result.filter(p=>p.newArrival);else if(queryValue.category)result=result.filter(p=>p.category===queryValue.category);if(queryValue.featured)result=result.filter(p=>p.featured);if(queryValue.newArrival)result=result.filter(p=>p.newArrival);if(queryValue.bestSeller)result=result.filter(p=>p.bestSeller);if(queryValue.availableOnly)result=result.filter(p=>p.available);result=sortProducts(result,queryValue.sort);return typeof queryValue.limit==='number'?result.slice(0,queryValue.limit):result;}
-function toSearchParams(queryValue: ProductQuery): string {const params=new URLSearchParams();Object.entries(queryValue).forEach(([key,value])=>{if(value!==undefined&&value!==''&&value!==false)params.set(key,String(value));});const qs=params.toString();return qs?`?${qs}`:'';}
-async function firebaseProducts(queryValue: ProductQuery={}): Promise<Product[]>{if(!db)return[];let q=query(collection(db,'products'));if(queryValue.availableOnly)q=query(collection(db,'products'),where('available','==',true));const snap=await getDocs(q);return applyQuery(snap.docs.map(d=>({id:d.id,...d.data()} as Product)),queryValue);}
-export async function listProducts(queryValue: ProductQuery={}): Promise<Product[]>{if(hasRemoteApi)return request<Product[]>(`/products${toSearchParams(queryValue)}`);if(firebaseConfigured)return firebaseProducts(queryValue);return applyQuery(productSeed,queryValue);}
-export async function getProduct(id:string):Promise<Product|null>{if(hasRemoteApi)return request<Product|null>(`/products/${encodeURIComponent(id)}`);if(firebaseConfigured&&db){const items=await firebaseProducts();return items.find(p=>p.id===id)??null;}return productSeed.find(p=>p.id===id)??null;}
-export async function listRelated(product:Product,limit=4):Promise<Product[]>{const items=await listProducts({category:product.category,limit});return items.filter(p=>p.id!==product.id).slice(0,limit);}
-export async function searchProducts(term:string,limit=6):Promise<Product[]>{return listProducts({search:term,limit});}
+function matchesSearch(product: Product, search: string): boolean {
+  const terms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = [product.name, product.category, product.categoryLabel, product.description, product.texture, product.laceType, product.hairType, product.length, product.badge]
+    .filter(Boolean).join(' ').toLowerCase().replace(/-/g, ' ');
+  return terms.every(term => haystack.includes(term.replace(/-/g, ' ')));
+}
+
+function sortProducts(items: Product[], sort: SortOption = 'featured'): Product[] {
+  const sorted = [...items];
+  switch (sort) {
+    case 'newest': return [...sorted.filter(p => p.newArrival), ...sorted.filter(p => !p.newArrival)];
+    case 'price-asc': return sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+    case 'price-desc': return sorted.sort((a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity));
+    default: return sorted.sort((a, b) => Number(b.featured) - Number(a.featured));
+  }
+}
+
+function applyQuery(items: Product[], queryValue: ProductQuery): Product[] {
+  let result = items;
+  if (queryValue.search) result = result.filter(p => matchesSearch(p, queryValue.search as string));
+  if (queryValue.category === 'new-arrivals') result = result.filter(p => p.newArrival);
+  else if (queryValue.category) result = result.filter(p => p.category === queryValue.category);
+  if (queryValue.featured) result = result.filter(p => p.featured);
+  if (queryValue.newArrival) result = result.filter(p => p.newArrival);
+  if (queryValue.bestSeller) result = result.filter(p => p.bestSeller);
+  if (queryValue.availableOnly) result = result.filter(p => p.available);
+  result = sortProducts(result, queryValue.sort);
+  return typeof queryValue.limit === 'number' ? result.slice(0, queryValue.limit) : result;
+}
+
+function toSearchParams(queryValue: ProductQuery): string {
+  const params = new URLSearchParams();
+  Object.entries(queryValue).forEach(([key, value]) => { if (value !== undefined && value !== '' && value !== false) params.set(key, String(value)); });
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+async function firebaseProducts(queryValue: ProductQuery = {}): Promise<Product[]> {
+  if (!db) return [];
+  let q = query(collection(db, 'products'));
+  if (queryValue.availableOnly) q = query(collection(db, 'products'), where('available', '==', true));
+  const snap = await getDocs(q);
+  // Keep the original catalog visible until the admin has populated Firestore.
+  // Once Firestore contains products, it becomes the single live source of truth.
+  const items = snap.empty ? productSeed : snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+  return applyQuery(items, queryValue);
+}
+
+export async function listProducts(queryValue: ProductQuery = {}): Promise<Product[]> {
+  if (hasRemoteApi) return request<Product[]>(`/products${toSearchParams(queryValue)}`);
+  if (firebaseConfigured) return firebaseProducts(queryValue);
+  return applyQuery(productSeed, queryValue);
+}
+
+export async function getProduct(id: string): Promise<Product | null> {
+  if (hasRemoteApi) return request<Product | null>(`/products/${encodeURIComponent(id)}`);
+  if (firebaseConfigured && db) {
+    const items = await firebaseProducts();
+    return items.find(p => p.id === id) ?? null;
+  }
+  return productSeed.find(p => p.id === id) ?? null;
+}
+
+export async function listRelated(product: Product, limit = 4): Promise<Product[]> {
+  const items = await listProducts({ category: product.category, limit });
+  return items.filter(p => p.id !== product.id).slice(0, limit);
+}
+
+export async function searchProducts(term: string, limit = 6): Promise<Product[]> {
+  return listProducts({ search: term, limit });
+}
