@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
-import { isAdmin, signOut } from '../services/authService';
+import { adminSignOut, isAdmin } from '../services/authService';
 import { getUserProfile, updateUserProfile } from '../services/profileService';
 import { routes } from '../config/business';
 
@@ -36,7 +36,7 @@ export default function Profile() {
     finally { setSaving(false); }
   }
 
-  async function logout() { await signOut(); navigate('/'); }
+  async function logout() { await adminSignOut(); navigate('/'); }
 
   return <main className="min-h-screen bg-warm-white pt-28 pb-20 px-4 md:px-8">
     <div className="mx-auto max-w-4xl">
