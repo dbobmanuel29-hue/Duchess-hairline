@@ -44,9 +44,8 @@ export async function signInWithGoogle() {
 export async function adminSignIn(email: string, password: string) {
   const user = await signInWithEmail(email, password);
   if (!(await isAdmin(user))) {
-    const uid = user.uid;
     await signOut(auth!);
-    throw new Error(`Account authenticated, but it is not an admin. UID: ${uid}`);
+    throw new Error('This account is not authorized to access the admin dashboard.');
   }
   return user;
 }
@@ -54,9 +53,8 @@ export async function adminSignIn(email: string, password: string) {
 export async function adminSignInWithGoogle() {
   const user = await signInWithGoogle();
   if (!(await isAdmin(user))) {
-    const uid = user.uid;
     await signOut(auth!);
-    throw new Error(`Google account authenticated, but it is not an admin. UID: ${uid}`);
+    throw new Error('This Google account is not authorized to access the admin dashboard.');
   }
   return user;
 }
