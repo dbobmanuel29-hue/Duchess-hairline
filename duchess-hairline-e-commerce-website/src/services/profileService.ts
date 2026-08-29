@@ -36,7 +36,12 @@ export async function getUserProfile(uid: string) {
   return snap.exists() ? ({ uid: snap.id, ...snap.data() } as UserProfile) : null;
 }
 
-export async function updateUserProfile(uid: string, data: Pick<UserProfile, 'name' | 'phone'>) {
+export async function updateUserProfile(uid: string, data: Pick<UserProfile, 'name' | 'phone' | 'photoURL'>) {
   if (!db) throw new Error('Firebase is not configured.');
-  await setDoc(doc(db, 'users', uid), { name: data.name.trim(), phone: data.phone.trim(), updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(db, 'users', uid), {
+    name: data.name.trim(),
+    phone: data.phone.trim(),
+    photoURL: data.photoURL || '',
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
