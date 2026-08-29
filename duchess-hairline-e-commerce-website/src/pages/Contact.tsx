@@ -7,242 +7,28 @@ import SeoHead from '../components/SeoHead';
 import WhatsAppIcon from '../components/icons/WhatsAppIcon';
 
 const FAQS = [
-  {
-    question: 'How do I place an order?',
-    answer:
-      'Open any wig and tap “Order on WhatsApp”. The message opens with the style already filled in, so you only need to press send. We reply with availability and price.',
-  },
-  {
-    question: 'Do I need an account to buy?',
-    answer:
-      'No. There is no sign up, no cart and no online payment on this website. Everything is agreed directly with us over WhatsApp.',
-  },
-  {
-    question: 'Why do some wigs say “price on request”?',
-    answer:
-      'Prices move with stock and length, so we confirm the current figure on WhatsApp rather than publish one that may be out of date.',
-  },
-  {
-    question: 'Can I see a wig before I buy it?',
-    answer: `Yes. You are welcome to visit us at ${business.address.street}, ${business.address.city}. Message us first so we can have the style ready.`,
-  },
-  {
-    question: 'Do you deliver outside Port Harcourt?',
-    answer:
-      'Delivery is arranged case by case. Send us your location on WhatsApp and we will confirm what is possible and what it costs before you commit.',
-  },
+ { question:'How do I place an order?', answer:'Open any wig and tap “Order on WhatsApp”. The message opens with the style already filled in, so you only need to press send. We reply with availability and price.' },
+ { question:'Do I need an account to buy?', answer:'No. There is no sign up, no cart and no online payment on this website. Everything is agreed directly with us over WhatsApp.' },
+ { question:'Why do some wigs say “price on request”?', answer:'Prices move with stock and length, so we confirm the current figure on WhatsApp rather than publish one that may be out of date.' },
+ { question:'Can I see a wig before I buy it?', answer:`Yes. You are welcome to visit us at ${business.address.street}, ${business.address.city}. Message us first so we can have the style ready.` },
+ { question:'Do you deliver outside Port Harcourt?', answer:'Delivery is arranged case by case. Send us your location on WhatsApp and we will confirm what is possible and what it costs before you commit.' },
 ];
 
-export default function Contact() {
-  return (
-    <main className="pt-16 md:pt-20 pb-mobile-nav min-h-screen">
-      <SeoHead
-        title={`Contact — ${business.name}`}
-        description={`Chat, call or visit Duchess Hairline at ${business.address.full}. Order wigs directly on WhatsApp.`}
-      />
+export default function Contact(){return <main className="pt-16 md:pt-20 pb-mobile-nav min-h-screen">
+ <SeoHead title={`Contact — ${business.name}`} description={`Chat, call or visit Duchess Hairline at ${business.address.full}. Order wigs directly on WhatsApp.`}/>
+ <section className="relative h-[44vh] md:h-[54vh] min-h-[320px] flex items-end overflow-hidden"><img src={media.aboutWide} alt="Contact Duchess Hairline" className="absolute inset-0 w-full h-full object-cover"/><div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10"/><div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pb-14 md:pb-20"><p className="label-text text-white/50 mb-3">Get in Touch</p><h1 className="hero-heading text-white">VISIT. CHAT.<br/>ORDER.</h1></div></section>
+ <section className="py-16 md:py-24"><div className="max-w-[1100px] mx-auto px-4 md:px-8"><div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <Reveal><div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center"><span className="w-14 h-14 rounded-full bg-[#1f8f4d]/10 text-[#1f8f4d] flex items-center justify-center mx-auto mb-5"><WhatsAppIcon size={24}/></span><h2 className="label-text text-charcoal/50 mb-3">WhatsApp</h2><p className="text-xl text-deep-black font-medium mb-1">{business.phone.display}</p><p className="text-xs text-charcoal/40 mb-6">{business.phone.international}</p><p className="text-sm text-charcoal/60 leading-relaxed mb-6">The fastest way to reach us. Send a style and we confirm availability and price.</p><a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp w-full mt-auto">Chat Now</a></div></Reveal>
+  <Reveal delay={0.08}><div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center"><span className="w-14 h-14 rounded-full bg-cream flex items-center justify-center mx-auto mb-5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8956a" strokeWidth="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></span><h2 className="label-text text-charcoal/50 mb-3">Call</h2><p className="text-xl text-deep-black font-medium mb-1">{business.phone.display}</p><p className="text-xs text-charcoal/40 mb-6">Tap to dial</p><p className="text-sm text-charcoal/60 leading-relaxed mb-6">Prefer to speak to someone? Call and we will help you choose.</p><a href={callLink()} className="btn-primary w-full mt-auto">Call Now</a></div></Reveal>
+  <Reveal delay={0.16}><div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center"><span className="w-14 h-14 rounded-full bg-cream flex items-center justify-center mx-auto mb-5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8956a" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span><h2 className="label-text text-charcoal/50 mb-3">Visit</h2><p className="text-lg text-deep-black font-medium mb-1">{business.address.city}</p><p className="text-xs text-charcoal/40 mb-6">{business.address.street}</p><p className="text-sm text-charcoal/60 leading-relaxed mb-6">{business.address.landmark}. Come and see the collection in person.</p><a href={directionsLink()} target="_blank" rel="noopener noreferrer" className="btn-outline w-full mt-auto">Get Directions</a></div></Reveal>
+ </div></div></section>
 
-      <section className="relative h-[44vh] md:h-[54vh] min-h-[320px] flex items-end overflow-hidden">
-        <img src={media.aboutWide} alt="Contact Duchess Hairline" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
-        <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pb-14 md:pb-20">
-          <p className="label-text text-white/50 mb-3">Get in Touch</p>
-          <h1 className="hero-heading text-white">
-            VISIT. CHAT.
-            <br />
-            ORDER.
-          </h1>
-        </div>
-      </section>
+ <section className="pb-16 md:pb-24"><div className="max-w-[1100px] mx-auto px-4 md:px-8"><div className="rounded-3xl overflow-hidden border border-beige/30 bg-white shadow-sm"><div className="p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-5"><div><p className="label-text text-charcoal/45 mb-3">Client enquiries</p><h2 className="font-display text-3xl md:text-4xl">Have a specific request?</h2><p className="mt-2 max-w-xl text-sm text-charcoal/55 leading-6">Tell Duchess Hairline what you are looking for and the team can review your request. You can also chat directly on WhatsApp.</p></div><Link to="/request" className="btn-primary shrink-0">Make a Client Inquiry</Link></div></div></div></section>
 
-      <section className="py-16 md:py-24">
-        <div className="max-w-[1100px] mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Reveal>
-              <div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center">
-                <span className="w-14 h-14 rounded-full bg-[#1f8f4d]/10 text-[#1f8f4d] flex items-center justify-center mx-auto mb-5">
-                  <WhatsAppIcon size={24} />
-                </span>
-                <h2 className="label-text text-charcoal/50 mb-3">WhatsApp</h2>
-                <p className="text-xl text-deep-black font-medium mb-1">{business.phone.display}</p>
-                <p className="text-xs text-charcoal/40 mb-6">{business.phone.international}</p>
-                <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
-                  The fastest way to reach us. Send a style and we confirm availability and price.
-                </p>
-                <a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp w-full mt-auto">
-                  Chat Now
-                </a>
-              </div>
-            </Reveal>
+ <section className="pb-16 md:pb-28"><div className="max-w-[1100px] mx-auto px-4 md:px-8"><div className="rounded-3xl overflow-hidden bg-[#ece7df] border border-beige/30"><div className="p-6 md:p-8"><p className="label-text text-charcoal/45 mb-2">Find us</p><h2 className="font-display text-3xl md:text-4xl">No. 4 Ebara Road, Orazi</h2><p className="mt-2 text-sm text-charcoal/55">{business.address.city}, {business.address.region}. {business.address.landmark}.</p></div><div className="relative w-full h-[360px] md:h-[440px] bg-[#ddd6cb]"><iframe title="Duchess Hairline location map" src="https://www.google.com/maps?q=No.%204%20Ebara%20Road%2C%20Orazi%2C%20Port%20Harcourt%2C%20Rivers%20State%2C%20Nigeria&output=embed" className="absolute inset-0 w-full h-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade"/><div className="absolute bottom-4 left-4 right-4 md:right-auto"><a href={directionsLink()} target="_blank" rel="noopener noreferrer" className="btn-white shadow-lg">Open in Google Maps ↗</a></div></div></div></div></section>
 
-            <Reveal delay={0.08}>
-              <div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center">
-                <span className="w-14 h-14 rounded-full bg-cream flex items-center justify-center mx-auto mb-5">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8956a" strokeWidth="1.5" aria-hidden="true">
-                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
-                  </svg>
-                </span>
-                <h2 className="label-text text-charcoal/50 mb-3">Call</h2>
-                <p className="text-xl text-deep-black font-medium mb-1">{business.phone.display}</p>
-                <p className="text-xs text-charcoal/40 mb-6">Tap to dial</p>
-                <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
-                  Prefer to speak to someone? Call during opening hours and we will help you choose.
-                </p>
-                <a href={callLink()} className="btn-primary w-full mt-auto">
-                  Call Now
-                </a>
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.16}>
-              <div className="bg-white border border-beige/30 p-8 h-full flex flex-col text-center">
-                <span className="w-14 h-14 rounded-full bg-cream flex items-center justify-center mx-auto mb-5">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8956a" strokeWidth="1.5" aria-hidden="true">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                </span>
-                <h2 className="label-text text-charcoal/50 mb-3">Visit</h2>
-                <p className="text-lg text-deep-black font-medium mb-1">{business.address.city}</p>
-                <p className="text-xs text-charcoal/40 mb-6">{business.address.street}</p>
-                <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
-                  {business.address.landmark}. Come and see the collection in person.
-                </p>
-                <a href={directionsLink()} target="_blank" rel="noopener noreferrer" className="btn-outline w-full mt-auto">
-                  Get Directions
-                </a>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-28 bg-deep-black">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <Reveal>
-              <img
-                src={media.storeInterior}
-                alt={`Inside the ${business.name} store in ${business.address.city}`}
-                loading="lazy"
-                className="w-full aspect-[4/3] object-cover"
-              />
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="label-text text-white/30 mb-4">Our Space</p>
-              <h2 className="font-display text-3xl md:text-5xl text-white font-light leading-[1.05] mb-6">
-                VISIT US IN
-                <br />
-                {business.address.city.toUpperCase()}
-              </h2>
-              <p className="text-sm text-white/50 leading-[1.85] mb-8">
-                You are welcome to walk in, look through the collection and try styles before deciding. If you message
-                ahead we can set aside what you want to see.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a href={directionsLink()} target="_blank" rel="noopener noreferrer" className="btn-white">
-                  Get Directions
-                </a>
-                <a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
-                  Message First
-                </a>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24">
-        <div className="max-w-[1100px] mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            <Reveal>
-              <div className="bg-white border border-beige/20 p-8 md:p-10 h-full">
-                <h2 className="font-display text-2xl text-deep-black font-light mb-6">Where to find us</h2>
-                <dl className="space-y-4 text-sm text-charcoal/70">
-                  <div>
-                    <dt className="text-deep-black font-medium">Address</dt>
-                    <dd>{business.address.street}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-deep-black font-medium">Landmark</dt>
-                    <dd>{business.address.landmark}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-deep-black font-medium">City</dt>
-                    <dd>
-                      {business.address.city}, {business.address.region}, {business.address.country}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </Reveal>
-
-            {business.hours.showHours && (
-              <Reveal delay={0.08}>
-                <div className="bg-deep-black p-8 md:p-10 h-full text-white">
-                  <h2 className="font-display text-2xl font-light mb-6">Opening hours</h2>
-                  <dl className="space-y-3 text-sm text-white/70">
-                    <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                      <dt>{business.hours.weekdays}</dt>
-                      <dd className="text-white text-right">{business.hours.weekdayTime}</dd>
-                    </div>
-                    <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                      <dt>{business.hours.sunday}</dt>
-                      <dd className="text-white/60 text-right">{business.hours.sundayTime}</dd>
-                    </div>
-                  </dl>
-                  <p className="text-xs text-white/30 pt-4 leading-relaxed">{business.hours.note}</p>
-                </div>
-              </Reveal>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24 bg-cream/30">
-        <div className="max-w-[900px] mx-auto px-4 md:px-8">
-          <Reveal className="text-center mb-12 md:mb-16">
-            <p className="label-text text-charcoal/50 mb-4">Questions</p>
-            <h2 className="section-heading text-deep-black">FREQUENTLY ASKED</h2>
-          </Reveal>
-
-          <div className="space-y-4">
-            {FAQS.map((faq, i) => (
-              <Reveal key={faq.question} delay={Math.min(i, 3) * 0.05}>
-                <details className="group bg-white border border-beige/20 p-6 md:p-7">
-                  <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">
-                    <h3 className="font-display text-lg text-deep-black font-medium">{faq.question}</h3>
-                    <span className="text-charcoal/40 transition-transform group-open:rotate-45 shrink-0" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                    </span>
-                  </summary>
-                  <p className="text-sm text-charcoal/60 leading-relaxed mt-4">{faq.answer}</p>
-                </details>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24 lg:py-32">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 text-center">
-          <Reveal>
-            <h2 className="editorial-heading text-deep-black mb-6">READY TO FIND YOUR LOOK?</h2>
-            <p className="text-sm text-charcoal/60 max-w-md mx-auto mb-10 leading-relaxed">
-              Message us on WhatsApp, call, or browse the collection first — whichever suits you.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
-                Chat on WhatsApp
-              </a>
-              <Link to={routes.collection} className="btn-outline">
-                Browse Collection
-              </Link>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-    </main>
-  );
-}
+ <section className="py-16 md:py-28 bg-deep-black"><div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12"><div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"><Reveal><img src={media.storeInterior} alt={`Inside the ${business.name} store in ${business.address.city}`} loading="lazy" className="w-full aspect-[4/3] object-cover"/></Reveal><Reveal delay={0.1}><p className="label-text text-white/30 mb-4">Our Space</p><h2 className="font-display text-3xl md:text-5xl text-white font-light leading-[1.05] mb-6">VISIT US IN<br/>{business.address.city.toUpperCase()}</h2><p className="text-sm text-white/50 leading-[1.85] mb-8">You are welcome to walk in, look through the collection and try styles before deciding. If you message ahead we can set aside what you want to see.</p><div className="flex flex-wrap gap-3"><a href={directionsLink()} target="_blank" rel="noopener noreferrer" className="btn-white">Get Directions</a><a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">Message First</a></div></Reveal></div></div></section>
+ <section className="py-16 md:py-24"><div className="max-w-[1100px] mx-auto px-4 md:px-8"><div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8"><Reveal><div className="bg-white border border-beige/20 p-8 md:p-10 h-full"><h2 className="font-display text-2xl text-deep-black font-light mb-6">Where to find us</h2><dl className="space-y-4 text-sm text-charcoal/70"><div><dt className="text-deep-black font-medium">Address</dt><dd>{business.address.street}</dd></div><div><dt className="text-deep-black font-medium">Landmark</dt><dd>{business.address.landmark}</dd></div><div><dt className="text-deep-black font-medium">City</dt><dd>{business.address.city}, {business.address.region}, {business.address.country}</dd></div></dl></div></Reveal>{business.hours.showHours&&<Reveal delay={0.08}><div className="bg-deep-black p-8 md:p-10 h-full text-white"><h2 className="font-display text-2xl font-light mb-6">Opening hours</h2><dl className="space-y-3 text-sm text-white/70"><div className="flex justify-between gap-4 border-b border-white/10 pb-2"><dt>{business.hours.weekdays}</dt><dd className="text-white text-right">{business.hours.weekdayTime}</dd></div><div className="flex justify-between gap-4 border-b border-white/10 pb-2"><dt>{business.hours.sunday}</dt><dd className="text-white/60 text-right">{business.hours.sundayTime}</dd></div></dl><p className="text-xs text-white/30 pt-4 leading-relaxed">{business.hours.note}</p></div></Reveal>}</div></div></section>
+ <section className="py-16 md:py-24 bg-cream/30"><div className="max-w-[900px] mx-auto px-4 md:px-8"><Reveal className="text-center mb-12 md:mb-16"><p className="label-text text-charcoal/50 mb-4">Questions</p><h2 className="section-heading text-deep-black">FREQUENTLY ASKED</h2></Reveal><div className="space-y-4">{FAQS.map((faq,i)=><Reveal key={faq.question} delay={Math.min(i,3)*0.05}><details className="group bg-white border border-beige/20 p-6 md:p-7"><summary className="flex items-center justify-between gap-4 cursor-pointer list-none"><h3 className="font-display text-lg text-deep-black font-medium">{faq.question}</h3><span className="text-charcoal/40 transition-transform group-open:rotate-45 shrink-0" aria-hidden="true">+</span></summary><p className="text-sm text-charcoal/60 leading-relaxed mt-4">{faq.answer}</p></details></Reveal>)}</div></div></section>
+ <section className="py-16 md:py-24 lg:py-32"><div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 text-center"><Reveal><h2 className="editorial-heading text-deep-black mb-6">READY TO FIND YOUR LOOK?</h2><p className="text-sm text-charcoal/60 max-w-md mx-auto mb-10 leading-relaxed">Message us on WhatsApp, send a client inquiry, or browse the collection first — whichever suits you.</p><div className="flex flex-wrap justify-center gap-3"><a href={generalEnquiryLink()} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">Chat on WhatsApp</a><Link to="/request" className="btn-primary">Client Inquiry</Link><Link to={routes.collection} className="btn-outline">Browse Collection</Link></div></Reveal></div></section>
+ </main>}
