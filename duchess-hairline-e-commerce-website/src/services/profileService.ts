@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
-import { db } from './firebase';
+import { updateProfile, type User } from 'firebase/auth';
+import { db, auth } from './firebase';
 
 export type UserProfile = {
   uid: string;
@@ -38,10 +38,18 @@ export async function getUserProfile(uid: string) {
 
 export async function updateUserProfile(uid: string, data: Pick<UserProfile, 'name' | 'phone' | 'photoURL'>) {
   if (!db) throw new Error('Firebase is not configured.');
+  const name = data.name.trim();
+  const phone = data.phone.trim();
+  const photoURL = data.photoURL || '';
+
   await setDoc(doc(db, 'users', uid), {
-    name: data.name.trim(),
-    phone: data.phone.trim(),
-    photoURL: data.photoURL || '',
+    name,
+    phone,
+    photoURL,
     updatedAt: serverTimestamp(),
   }, { merge: true });
+
+  if (auth?.currentUser?.uid === uid) {
+    await updateProfile(auth.currentUser, { displayName: name || null, photoURL: photoURL || null });
+  }
 }
