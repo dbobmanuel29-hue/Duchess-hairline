@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "cd duchess-hairline-e-commerce-website && npm ci",
+  "installCommand": "cd duchess-hairline-e-commerce-website && npm install",
   "buildCommand": "cd duchess-hairline-e-commerce-website && npm run build",
   "outputDirectory": "duchess-hairline-e-commerce-website/dist",
   "rewrites": [
