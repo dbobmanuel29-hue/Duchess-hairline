@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /profile
+Disallow: /login
+
+Sitemap: https://duchess-hairline-e-commerce-website.vercel.app/sitemap.xml
