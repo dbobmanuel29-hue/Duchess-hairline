@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+
     function admin() {
       return signedIn()
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
@@ -15,23 +16,54 @@ service cloud.firestore {
     }
 
     match /reviews/{id} {
-      allow read: if resource.data.approved == true || admin();
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || resource.data.approved == true;
+      // Admins can publish/manage reviews. Customers can submit only their own
+      // unapproved review; approval can never be granted by a customer.
+      allow create: if admin()
+        || (signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.approved == false);
       allow update, delete: if admin();
     }
 
     match /inquiries/{id} {
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow read: if admin();
-      allow update, delete: if admin();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.email == (request.auth.token.email == null ? '' : request.auth.token.email);
+      allow read, update, delete: if admin();
     }
 
-    match /categories/{id} { allow read: if true; allow write: if admin(); }
-    match /settings/{id} { allow read: if true; allow write: if admin(); }
+    match /users/{uid} {
+      // A customer can only access their own profile. Admins can read profiles
+      // for the dashboard user list, but customers cannot enumerate other users.
+      allow read: if admin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid;
+      allow delete: if admin();
+    }
+
+    match /categories/{id} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if admin();
+    }
 
     match /admins/{id} {
-      allow read: if signedIn() && request.auth.uid == id;
+      // Admin membership is managed from Firebase/privileged tooling. An
+      // existing admin may not promote themselves by changing another doc.
+      allow read: if admin() || (signedIn() && request.auth.uid == id);
       allow write: if admin();
+    }
+
+    // Explicit deny for every collection that has not been listed above.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
