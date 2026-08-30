@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HashRouter, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { routes } from './config/business';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -24,6 +24,42 @@ import Profile from './pages/Profile';
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{window.scrollTo(0,0)},[pathname]);return null}
 function ShopRedirect(){const[params]=useSearchParams();const query=params.toString();return <Navigate to={query?`${routes.collection}?${query}`:routes.collection} replace/>}
 
-export default function App(){return <HashRouter><ScrollToTop/><Routes><Route path="/admin" element={<Admin/>}/><Route path="/login" element={<Login/>}/><Route path="/profile" element={<Profile/>}/><Route path="*" element={<PublicApp/>}/></Routes></HashRouter>}
+export default function App(){
+  return <BrowserRouter>
+    <ScrollToTop/>
+    <Routes>
+      <Route path="/admin" element={<Admin/>}/>
+      <Route path="/login" element={<Login/>}/>
+      <Route path="/profile" element={<Profile/>}/>
+      <Route path="*" element={<PublicApp/>}/>
+    </Routes>
+  </BrowserRouter>
+}
 
-function PublicApp(){const location=useLocation();const showInquiryPrompt=location.pathname===routes.contact;return <div className="min-h-screen bg-warm-white flex flex-col"><Header/><div className="flex-1"><Routes><Route path={routes.home} element={<Home/>}/><Route path={routes.collection} element={<Collection/>}/><Route path="/product/:id" element={<ProductPage/>}/><Route path={routes.about} element={<About/>}/><Route path={routes.reviews} element={<Reviews/>}/><Route path={routes.contact} element={<Contact/>}/><Route path="/request" element={<ClientRequest/>}/><Route path={routes.terms} element={<Terms/>}/><Route path={routes.privacy} element={<Privacy/>}/><Route path={routes.security} element={<Security/>}/><Route path="/shop" element={<ShopRedirect/>}/><Route path="*" element={<NotFound/>}/></Routes>{showInquiryPrompt&&<InquiryPrompt/>}</div><Footer/><WhatsAppButton/><MobileNav/></div>}
+function PublicApp(){
+  const location=useLocation();
+  const showInquiryPrompt=location.pathname===routes.contact;
+  return <div className="min-h-screen bg-warm-white flex flex-col">
+    <Header/>
+    <div className="flex-1">
+      <Routes>
+        <Route path={routes.home} element={<Home/>}/>
+        <Route path={routes.collection} element={<Collection/>}/>
+        <Route path="/product/:id" element={<ProductPage/>}/>
+        <Route path={routes.about} element={<About/>}/>
+        <Route path={routes.reviews} element={<Reviews/>}/>
+        <Route path={routes.contact} element={<Contact/>}/>
+        <Route path="/request" element={<ClientRequest/>}/>
+        <Route path={routes.terms} element={<Terms/>}/>
+        <Route path={routes.privacy} element={<Privacy/>}/>
+        <Route path={routes.security} element={<Security/>}/>
+        <Route path="/shop" element={<ShopRedirect/>}/>
+        <Route path="*" element={<NotFound/>}/>
+      </Routes>
+      {showInquiryPrompt&&<InquiryPrompt/>}
+    </div>
+    <Footer/>
+    <WhatsAppButton/>
+    <MobileNav/>
+  </div>
+}
