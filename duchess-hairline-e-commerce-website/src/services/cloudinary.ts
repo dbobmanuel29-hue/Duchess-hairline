@@ -5,6 +5,11 @@ export const cloudinaryConfigured = Boolean(cloudName && uploadPreset);
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const ALLOWED_FOLDERS = new Set([
+  'duchess-hairline/products',
+  'duchess-hairline/profiles',
+  'duchess-hairline/testimonials',
+]);
 
 export async function uploadToCloudinary(
   file: File,
@@ -20,8 +25,8 @@ export async function uploadToCloudinary(
   if (file.size > MAX_IMAGE_BYTES) {
     throw new Error('Image is too large. Please choose an image under 10 MB.');
   }
+  const safeFolder = ALLOWED_FOLDERS.has(folder) ? folder : 'duchess-hairline/products';
 
-  const safeFolder = folder.startsWith('duchess-hairline/') ? folder : 'duchess-hairline/products';
   const body = new FormData();
   body.append('file', file);
   body.append('upload_preset', uploadPreset);
