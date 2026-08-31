@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#151515"/>
+  <rect x="42" y="42" width="1116" height="546" rx="8" fill="#151515" stroke="#d8c7aa" stroke-width="2"/>
+  <text x="600" y="235" text-anchor="middle" fill="#d8c7aa" font-family="Georgia,serif" font-size="74" letter-spacing="12">DUCHESS</text>
+  <text x="600" y="320" text-anchor="middle" fill="#ffffff" font-family="Georgia,serif" font-size="62" letter-spacing="8">HAIRLINE</text>
+  <line x1="455" y1="365" x2="745" y2="365" stroke="#d8c7aa" stroke-width="2"/>
+  <text x="600" y="420" text-anchor="middle" fill="#ffffff" opacity="0.75" font-family="Arial,sans-serif" font-size="24" letter-spacing="5">PREMIUM WIGS &amp; HAIR</text>
+  <text x="600" y="465" text-anchor="middle" fill="#ffffff" opacity="0.55" font-family="Arial,sans-serif" font-size="18" letter-spacing="3">PORT HARCOURT · NIGERIA</text>
+</svg>
