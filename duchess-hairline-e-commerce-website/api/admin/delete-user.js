@@ -1,12 +1,10 @@
 import crypto from 'node:crypto';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAppCheck } from 'firebase-admin/app-check';
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'duchess-hairline';
 const WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY;
 const SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-const APP_CHECK_ISSUER = 'https://firebaseappcheck.googleapis.com/';
-const APP_CHECK_JWKS_URL = 'https://firebaseappcheck.googleapis.com/v1/jwks';
-let jwksCache = null;
-let jwksCacheExpiresAt = 0;
 
 function setHeaders(res, origin) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -23,6 +21,21 @@ function setHeaders(res, origin) {
 function send(res, status, body, origin) {
   setHeaders(res, origin);
   return res.status(status).json(body);
+}
+
+function getAdminApp() {
+  if (getApps().length) return getApps()[0];
+  if (!SERVICE_ACCOUNT_JSON) throw new Error('Server-side Firebase credentials are not configured yet.');
+  const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
+  return initializeApp({
+    credential: cert(serviceAccount),
+    projectId: PROJECT_ID,
+  });
+}
+
+async function verifyAppCheckToken(token) {
+  if (!token) throw new Error('App Check token required.');
+  await getAppCheck(getAdminApp()).verifyToken(token);
 }
 
 function base64url(value) { return Buffer.from(value).toString('base64url'); }
@@ -53,53 +66,6 @@ async function getAccessToken(serviceAccount) {
   const data = await response.json();
   if (!response.ok || !data.access_token) throw new Error('Could not obtain the server authorization token.');
   return data.access_token;
-}
-
-async function getAppCheckJwks() {
-  if (jwksCache && Date.now() < jwksCacheExpiresAt) return jwksCache;
-  const response = await fetch(APP_CHECK_JWKS_URL, { headers: { accept: 'application/json' } });
-  const data = await response.json();
-  if (!response.ok || !Array.isArray(data.keys)) throw new Error('Could not retrieve Firebase App Check verification keys.');
-  jwksCache = data.keys;
-  jwksCacheExpiresAt = Date.now() + 60 * 60 * 1000;
-  return jwksCache;
-}
-
-async function verifyAppCheckToken(token) {
-  if (!token) throw new Error('App Check token required.');
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Invalid App Check token.');
-
-  let header;
-  let payload;
-  try {
-    header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-  } catch {
-    throw new Error('Invalid App Check token.');
-  }
-
-  if (header.alg !== 'RS256' || header.typ !== 'JWT' || !header.kid) {
-    throw new Error('Invalid App Check token header.');
-  }
-  if (payload.iss !== APP_CHECK_ISSUER) throw new Error('Invalid App Check token issuer.');
-  const expectedAudience = `projects/${PROJECT_ID}`;
-  const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!audience.includes(expectedAudience)) throw new Error('App Check token is for a different Firebase project.');
-  if (!payload.sub || typeof payload.sub !== 'string') throw new Error('Invalid App Check app identity.');
-  if (!Number.isFinite(payload.exp) || payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('App Check token has expired.');
-
-  const keys = await getAppCheckJwks();
-  const jwk = keys.find(key => key.kid === header.kid && key.kty === 'RSA');
-  if (!jwk) throw new Error('App Check verification key not found.');
-
-  const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
-  const verifier = crypto.createVerify('RSA-SHA256');
-  verifier.update(`${parts[0]}.${parts[1]}`);
-  verifier.end();
-  const valid = verifier.verify(publicKey, Buffer.from(parts[2], 'base64url'));
-  if (!valid) throw new Error('Invalid App Check token signature.');
-  return payload;
 }
 
 async function lookupCurrentAdmin(idToken) {
@@ -164,7 +130,8 @@ export default async function handler(req, res) {
   try {
     await verifyAppCheckToken(typeof appCheckToken === 'string' ? appCheckToken : '');
   } catch (error) {
-    return send(res, 401, { error: error instanceof Error ? error.message : 'Valid App Check token required.' }, origin);
+    console.error('App Check verification failed:', error);
+    return send(res, 401, { error: 'Invalid or missing App Check token.' }, origin);
   }
 
   let body;
@@ -184,16 +151,13 @@ export default async function handler(req, res) {
     if (adminDoc?.fields?.role?.stringValue !== 'admin' || adminDoc.fields?.active?.booleanValue !== true) {
       return send(res, 403, { error: 'Administrator authorization required.' }, origin);
     }
-
     if (requestedUid === adminUid) {
       return send(res, 400, { error: 'The current administrator cannot delete their own account.' }, origin);
     }
-
     const targetAdminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(requestedUid)}`);
     if (targetAdminDoc?.fields?.role?.stringValue === 'admin') {
       return send(res, 403, { error: 'Admin accounts are protected from deletion.' }, origin);
     }
-
     await deleteAuthUser(accessToken, requestedUid);
     await deleteDocument(accessToken, `users/${encodeURIComponent(requestedUid)}`);
     return send(res, 200, { success: true }, origin);
