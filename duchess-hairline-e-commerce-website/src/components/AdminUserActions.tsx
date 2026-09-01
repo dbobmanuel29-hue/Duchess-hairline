@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { auth } from '../services/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 
 function getTable() {
   return Array.from(document.querySelectorAll('table')).find(table =>
@@ -50,17 +51,24 @@ export default function AdminUserActions() {
           button.disabled = true;
           button.textContent = 'Deleting…';
           try {
+            if (!db) throw new Error('Firebase is not configured.');
+            const profiles = await getDocs(collection(db, 'users'));
+            const target = profiles.docs.find(doc => {
+              const data = doc.data() as { email?: string; phone?: string };
+              return (identifier.includes('@') && data.email?.trim().toLowerCase() === identifier.toLowerCase()) ||
+                (!identifier.includes('@') && data.phone?.trim() === identifier);
+            });
+            if (!target) throw new Error('The user profile could not be matched to a Firebase account. Refresh the Users page and try again.');
+
             const token = await auth.currentUser.getIdToken(true);
-            const payload = identifier.includes('@') ? { email: identifier } : { phone: identifier };
             const response = await fetch('/api/admin/delete-user', {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
+              body: JSON.stringify({ uid: target.id }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || 'User deletion failed.');
-            alert('User deleted successfully.');
-            window.location.reload();
+            row.remove();
           } catch (error) {
             alert(error instanceof Error ? error.message : 'User deletion failed.');
             button.disabled = false;
