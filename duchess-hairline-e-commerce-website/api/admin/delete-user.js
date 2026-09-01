@@ -9,9 +9,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
-function base64url(value) {
-  return Buffer.from(value).toString('base64url');
-}
+function base64url(value) { return Buffer.from(value).toString('base64url'); }
 
 async function getAccessToken(serviceAccount) {
   const now = Math.floor(Date.now() / 1000);
@@ -28,14 +26,12 @@ async function getAccessToken(serviceAccount) {
   signer.update(unsigned);
   signer.end();
   const signature = signer.sign(serviceAccount.private_key, 'base64url');
-  const assertion = `${unsigned}.${signature}`;
-
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
+      assertion: `${unsigned}.${signature}`,
     }),
   });
   const data = await response.json();
@@ -111,19 +107,20 @@ export default async function handler(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Invalid request body.' }, 400); }
+  const requestedUid = String(body?.uid || '').trim();
   const identifier = String(body?.email || body?.phone || '').trim();
-  if (!identifier) return json({ error: 'A user email or phone number is required.' }, 400);
+  if (!requestedUid && !identifier) return json({ error: 'A user UID, email, or phone number is required.' }, 400);
 
   try {
     const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
     const accessToken = await getAccessToken(serviceAccount);
     const adminUid = await lookupCurrentAdmin(idToken);
     const adminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(adminUid)}`);
-    if (!adminDoc?.fields?.role?.stringValue || adminDoc.fields.role.stringValue !== 'admin' || adminDoc.fields.active?.booleanValue !== true) {
+    if (adminDoc?.fields?.role?.stringValue !== 'admin' || adminDoc.fields?.active?.booleanValue !== true) {
       return json({ error: 'Administrator authorization required.' }, 403);
     }
 
-    const targetUid = await lookupTarget(accessToken, identifier);
+    const targetUid = requestedUid || await lookupTarget(accessToken, identifier);
     if (targetUid === adminUid) return json({ error: 'The current administrator cannot delete their own account.' }, 400);
 
     const targetAdminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(targetUid)}`);
@@ -133,7 +130,6 @@ export default async function handler(request) {
 
     await deleteAuthUser(accessToken, targetUid);
     await deleteDocument(accessToken, `users/${encodeURIComponent(targetUid)}`);
-
     return json({ success: true });
   } catch (error) {
     console.error('Admin user deletion failed:', error);
