@@ -4,25 +4,22 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'duchess-hairline';
 const WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY;
 const SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-function responseHeaders(request) {
-  const origin = request.headers.get('origin');
-  return {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-    ...(origin ? {
-      'access-control-allow-origin': origin,
-      'access-control-allow-methods': 'POST, OPTIONS',
-      'access-control-allow-headers': 'Authorization, Content-Type',
-      'access-control-max-age': '600',
-      'vary': 'Origin',
-    } : {}),
-  };
+function setHeaders(res, origin) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Max-Age', '600');
+    res.setHeader('Vary', 'Origin');
+  }
 }
 
-const json = (body, status = 200, request) => new Response(JSON.stringify(body), {
-  status,
-  headers: responseHeaders(request),
-});
+function send(res, status, body, origin) {
+  setHeaders(res, origin);
+  return res.status(status).json(body);
+}
 
 function base64url(value) { return Buffer.from(value).toString('base64url'); }
 
@@ -87,19 +84,6 @@ async function deleteDocument(accessToken, path) {
   }
 }
 
-async function lookupTarget(accessToken, identifier) {
-  const isEmail = identifier.includes('@');
-  const body = isEmail ? { email: [identifier] } : { phoneNumber: [identifier] };
-  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(PROJECT_ID)}/accounts:lookup`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok || !data.users?.[0]?.localId) throw new Error('The Firebase Authentication account could not be found.');
-  return data.users[0].localId;
-}
-
 async function deleteAuthUser(accessToken, uid) {
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(PROJECT_ID)}/accounts:delete`, {
     method: 'POST',
@@ -112,20 +96,22 @@ async function deleteAuthUser(accessToken, uid) {
   }
 }
 
-export default async function handler(request) {
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: responseHeaders(request) });
-  if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405, request);
-  if (!SERVICE_ACCOUNT_JSON) return json({ error: 'Server-side Firebase credentials are not configured yet.' }, 503, request);
+export default async function handler(req, res) {
+  const origin = req.headers.origin;
+  if (req.method === 'OPTIONS') {
+    setHeaders(res, origin);
+    return res.status(204).end();
+  }
+  if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed.' }, origin);
+  if (!SERVICE_ACCOUNT_JSON) return send(res, 503, { error: 'Server-side Firebase credentials are not configured yet.' }, origin);
 
-  const authorization = request.headers.get('authorization') || '';
+  const authorization = req.headers.authorization || '';
   const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
-  if (!idToken) return json({ error: 'Authentication required.' }, 401, request);
+  if (!idToken) return send(res, 401, { error: 'Authentication required.' }, origin);
 
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'Invalid request body.' }, 400, request); }
-  const requestedUid = String(body?.uid || '').trim();
-  const identifier = String(body?.email || body?.phone || '').trim();
-  if (!requestedUid && !identifier) return json({ error: 'A user UID, email, or phone number is required.' }, 400, request);
+  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  const requestedUid = String(body.uid || '').trim();
+  if (!requestedUid) return send(res, 400, { error: 'A user UID is required.' }, origin);
 
   try {
     const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
@@ -133,22 +119,23 @@ export default async function handler(request) {
     const adminUid = await lookupCurrentAdmin(idToken);
     const adminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(adminUid)}`);
     if (adminDoc?.fields?.role?.stringValue !== 'admin' || adminDoc.fields?.active?.booleanValue !== true) {
-      return json({ error: 'Administrator authorization required.' }, 403, request);
+      return send(res, 403, { error: 'Administrator authorization required.' }, origin);
     }
 
-    const targetUid = requestedUid || await lookupTarget(accessToken, identifier);
-    if (targetUid === adminUid) return json({ error: 'The current administrator cannot delete their own account.' }, 400, request);
+    if (requestedUid === adminUid) {
+      return send(res, 400, { error: 'The current administrator cannot delete their own account.' }, origin);
+    }
 
-    const targetAdminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(targetUid)}`);
+    const targetAdminDoc = await getDocument(accessToken, `admins/${encodeURIComponent(requestedUid)}`);
     if (targetAdminDoc?.fields?.role?.stringValue === 'admin') {
-      return json({ error: 'Admin accounts are protected from deletion.' }, 403, request);
+      return send(res, 403, { error: 'Admin accounts are protected from deletion.' }, origin);
     }
 
-    await deleteAuthUser(accessToken, targetUid);
-    await deleteDocument(accessToken, `users/${encodeURIComponent(targetUid)}`);
-    return json({ success: true }, 200, request);
+    await deleteAuthUser(accessToken, requestedUid);
+    await deleteDocument(accessToken, `users/${encodeURIComponent(requestedUid)}`);
+    return send(res, 200, { success: true }, origin);
   } catch (error) {
     console.error('Admin user deletion failed:', error);
-    return json({ error: error instanceof Error ? error.message : 'User deletion failed.' }, 500, request);
+    return send(res, 500, { error: error instanceof Error ? error.message : 'User deletion failed.' }, origin);
   }
 }
