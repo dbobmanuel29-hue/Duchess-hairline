@@ -41,10 +41,6 @@ if (app && appCheckSiteKey) {
 // Protect requests to Duchess Hairline's own /api endpoints with the current
 // App Check token. Firebase recommends sending custom-backend App Check tokens
 // in the X-Firebase-AppCheck header rather than in URLs.
-//
-// The admin deletion endpoint also gets a freshly refreshed Firebase Auth ID
-// token immediately before the request. This prevents a cached/stale ID token
-// from being rejected by the server while keeping App Check protection intact.
 if (appCheck && typeof window !== 'undefined') {
   const fetchKey = '__duchessAppCheckFetchWrapped';
   const windowWithFlag = window as typeof window & { [fetchKey]?: boolean };
@@ -62,22 +58,10 @@ if (appCheck && typeof window !== 'undefined') {
             headers.set('X-Firebase-AppCheck', tokenResult.token);
           }
 
-          if (requestUrl.pathname === '/api/admin/delete-user') {
-            const currentUser = auth?.currentUser;
-            if (!currentUser) {
-              throw new Error('No signed-in Firebase user is available.');
-            }
-            const idToken = await currentUser.getIdToken(true);
-            headers.set('Authorization', `Bearer ${idToken}`);
-          }
-
           return originalFetch(input, { ...init, headers });
         }
       } catch (error) {
         console.warn('Firebase authentication/App Check token could not be attached to API request:', error);
-        if (error instanceof Error && error.message === 'No signed-in Firebase user is available.') {
-          throw error;
-        }
       }
       return originalFetch(input, init);
     };
