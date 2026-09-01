@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { deleteInquiry } from '../services/inquiryService';
+import { auth } from '../services/firebase';
+import { deleteInquiry, listInquiries, type Inquiry } from '../services/inquiryService';
 
 function findInquiryTable() {
   return Array.from(document.querySelectorAll('table')).find(table => {
@@ -12,12 +13,30 @@ function findInquiryTable() {
   }) as HTMLTableElement | undefined;
 }
 
+function rowMatchesInquiry(row: HTMLTableRowElement, inquiry: Inquiry) {
+  const text = (row.textContent || '').trim().toLowerCase();
+  const candidates = [inquiry.name, inquiry.email, inquiry.phone, inquiry.productName, inquiry.message]
+    .filter(Boolean)
+    .map(value => String(value).trim().toLowerCase())
+    .filter(value => value.length >= 3);
+  return candidates.some(value => text.includes(value));
+}
+
 export default function AdminInquiryActions() {
   useEffect(() => {
     if (window.location.pathname !== '/admin') return;
 
     let disposed = false;
     let observer: MutationObserver | undefined;
+    let inquiries: Inquiry[] = [];
+    let loading = false;
+
+    const load = async () => {
+      if (loading) return;
+      loading = true;
+      try { inquiries = await listInquiries(); } catch { inquiries = []; }
+      finally { loading = false; }
+    };
 
     const scan = () => {
       if (disposed) return;
@@ -33,19 +52,11 @@ export default function AdminInquiryActions() {
         header.appendChild(th);
       }
 
-      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const rows = Array.from(table.querySelectorAll('tbody tr')) as HTMLTableRowElement[];
       rows.forEach(row => {
         if (row.querySelector('[data-admin-delete-inquiry]')) return;
-
-        const cells = Array.from(row.querySelectorAll('td'));
-        if (!cells.length) return;
-        const displayName = cells[0]?.textContent?.trim() || 'this client request';
-        const id = row.getAttribute('data-inquiry-id') || '';
-
-        // Prefer an ID embedded by the inquiry row. If the existing table does
-        // not expose it, fall back to the row's React key is not possible from
-        // the DOM, so leave the row untouched rather than deleting the wrong item.
-        if (!id) return;
+        const inquiry = inquiries.find(item => rowMatchesInquiry(row, item));
+        if (!inquiry) return;
 
         const cell = document.createElement('td');
         cell.className = 'text-right';
@@ -55,11 +66,14 @@ export default function AdminInquiryActions() {
         button.textContent = 'Delete';
         button.className = 'rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50';
         button.addEventListener('click', async () => {
-          if (!window.confirm(`Delete ${displayName}'s client request? This permanently removes the inquiry and cannot be undone.`)) return;
+          if (!auth?.currentUser) return alert('Your admin session has expired. Please sign in again.');
+          const name = inquiry.name || inquiry.email || inquiry.phone || 'this client request';
+          if (!window.confirm(`Delete ${name}'s client request? This permanently removes the inquiry and cannot be undone.`)) return;
           button.disabled = true;
           button.textContent = 'Deleting…';
           try {
-            await deleteInquiry(id);
+            await deleteInquiry(inquiry.id);
+            inquiries = inquiries.filter(item => item.id !== inquiry.id);
             row.remove();
           } catch (error) {
             alert(error instanceof Error ? error.message : 'Could not delete the client request.');
@@ -72,6 +86,7 @@ export default function AdminInquiryActions() {
       });
     };
 
+    void load().then(scan);
     scan();
     observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
