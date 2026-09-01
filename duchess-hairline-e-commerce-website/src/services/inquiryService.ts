@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, getDocs, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type InquiryStatus = 'new' | 'contacted' | 'confirmed' | 'completed' | 'cancelled';
@@ -35,4 +35,10 @@ export async function listInquiries(): Promise<Inquiry[]> {
 
 export async function updateInquiryStatus(id: string, status: InquiryStatus) {
   await updateDoc(doc(requireDb(), 'inquiries', id), { status, updatedAt: serverTimestamp() });
+}
+
+/** Permanently removes a client inquiry. Firestore rules must restrict this to active admins. */
+export async function deleteInquiry(id: string) {
+  if (!id) throw new Error('Inquiry ID is required.');
+  await deleteDoc(doc(requireDb(), 'inquiries', id));
 }
