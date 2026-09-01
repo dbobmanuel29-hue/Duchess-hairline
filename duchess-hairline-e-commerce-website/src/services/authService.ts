@@ -2,6 +2,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -31,6 +32,17 @@ export async function signInWithEmail(email: string, password: string) {
   if (!auth) throw new Error('Firebase is not configured.');
   const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
   return credential.user;
+}
+
+export async function sendPasswordReset(email: string) {
+  if (!auth) throw new Error('Firebase is not configured.');
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) throw new Error('Enter your email address first.');
+
+  await sendPasswordResetEmail(auth, trimmedEmail, {
+    url: `${window.location.origin}/login`,
+    handleCodeInApp: false,
+  });
 }
 
 export async function signInWithGoogle() {
