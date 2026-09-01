@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
+  getToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider,
   type AppCheck,
@@ -32,10 +33,37 @@ if (app && appCheckSiteKey) {
       isTokenAutoRefreshEnabled: true,
     });
   } catch (error) {
-    // Keep the app usable while App Check is being configured. Enforcement
-    // should only be enabled in Firebase after verified requests are visible.
     console.warn('Firebase App Check could not be initialized:', error);
     appCheck = null;
+  }
+}
+
+// Protect requests to Duchess Hairline's own /api endpoints with the current
+// App Check token. Firebase recommends sending custom-backend App Check tokens
+// in the X-Firebase-AppCheck header rather than in URLs.
+if (appCheck && typeof window !== 'undefined') {
+  const fetchKey = '__duchessAppCheckFetchWrapped';
+  const windowWithFlag = window as typeof window & { [fetchKey]?: boolean };
+  if (!windowWithFlag[fetchKey]) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        const requestUrl = new URL(input instanceof Request ? input.url : String(input), window.location.origin);
+        if (requestUrl.pathname.startsWith('/api/')) {
+          const tokenResult = await getToken(appCheck!, false);
+          if (tokenResult?.token) {
+            const headers = new Headers(input instanceof Request ? input.headers : undefined);
+            if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+            headers.set('X-Firebase-AppCheck', tokenResult.token);
+            return originalFetch(input, { ...init, headers });
+          }
+        }
+      } catch (error) {
+        console.warn('Firebase App Check token could not be attached to API request:', error);
+      }
+      return originalFetch(input, init);
+    };
+    windowWithFlag[fetchKey] = true;
   }
 }
 
