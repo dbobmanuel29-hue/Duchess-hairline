@@ -41,6 +41,10 @@ if (app && appCheckSiteKey) {
 // Protect requests to Duchess Hairline's own /api endpoints with the current
 // App Check token. Firebase recommends sending custom-backend App Check tokens
 // in the X-Firebase-AppCheck header rather than in URLs.
+//
+// The admin deletion endpoint also gets a freshly refreshed Firebase Auth ID
+// token immediately before the request. This prevents a cached/stale ID token
+// from being rejected by the server while keeping App Check protection intact.
 if (appCheck && typeof window !== 'undefined') {
   const fetchKey = '__duchessAppCheckFetchWrapped';
   const windowWithFlag = window as typeof window & { [fetchKey]?: boolean };
@@ -50,16 +54,30 @@ if (appCheck && typeof window !== 'undefined') {
       try {
         const requestUrl = new URL(input instanceof Request ? input.url : String(input), window.location.origin);
         if (requestUrl.pathname.startsWith('/api/')) {
+          const headers = new Headers(input instanceof Request ? input.headers : undefined);
+          if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+
           const tokenResult = await getToken(appCheck!, false);
           if (tokenResult?.token) {
-            const headers = new Headers(input instanceof Request ? input.headers : undefined);
-            if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
             headers.set('X-Firebase-AppCheck', tokenResult.token);
-            return originalFetch(input, { ...init, headers });
           }
+
+          if (requestUrl.pathname === '/api/admin/delete-user') {
+            const currentUser = auth?.currentUser;
+            if (!currentUser) {
+              throw new Error('No signed-in Firebase user is available.');
+            }
+            const idToken = await currentUser.getIdToken(true);
+            headers.set('Authorization', `Bearer ${idToken}`);
+          }
+
+          return originalFetch(input, { ...init, headers });
         }
       } catch (error) {
-        console.warn('Firebase App Check token could not be attached to API request:', error);
+        console.warn('Firebase authentication/App Check token could not be attached to API request:', error);
+        if (error instanceof Error && error.message === 'No signed-in Firebase user is available.') {
+          throw error;
+        }
       }
       return originalFetch(input, init);
     };
