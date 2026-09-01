@@ -2,20 +2,9 @@ import { useEffect } from 'react';
 import { auth } from '../services/firebase';
 import { deleteInquiry, listInquiries, type Inquiry } from '../services/inquiryService';
 
-function findInquiryTable() {
-  return Array.from(document.querySelectorAll('table')).find(table => {
-    const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent?.trim().toLowerCase() || '');
-    const hasStatus = headers.some(h => h === 'status');
-    const hasCustomer = headers.some(h => ['customer', 'name', 'client'].includes(h));
-    const hasRequest = headers.some(h => ['request', 'message', 'product'].includes(h));
-    const hasSignIn = headers.some(h => h === 'sign-in method');
-    return hasStatus && (hasCustomer || hasRequest) && !hasSignIn;
-  }) as HTMLTableElement | undefined;
-}
-
-function rowMatchesInquiry(row: HTMLTableRowElement, inquiry: Inquiry) {
-  const text = (row.textContent || '').trim().toLowerCase();
-  const candidates = [inquiry.name, inquiry.email, inquiry.phone, inquiry.productName, inquiry.message]
+function articleMatchesInquiry(article: HTMLElement, inquiry: Inquiry) {
+  const text = (article.textContent || '').trim().toLowerCase();
+  const candidates = [inquiry.email, inquiry.phone, inquiry.name, inquiry.message, inquiry.productName]
     .filter(Boolean)
     .map(value => String(value).trim().toLowerCase())
     .filter(value => value.length >= 3);
@@ -39,32 +28,17 @@ export default function AdminInquiryActions() {
     };
 
     const scan = () => {
-      if (disposed) return;
-      const table = findInquiryTable();
-      if (!table) return;
+      if (disposed || !inquiries.length) return;
+      const articles = Array.from(document.querySelectorAll('article')) as HTMLElement[];
+      inquiries.forEach(inquiry => {
+        const article = articles.find(item => articleMatchesInquiry(item, inquiry));
+        if (!article || article.querySelector('[data-admin-delete-inquiry]')) return;
 
-      const header = table.querySelector('thead tr');
-      if (header && !header.querySelector('[data-admin-inquiry-actions-header]')) {
-        const th = document.createElement('th');
-        th.textContent = 'Actions';
-        th.dataset.adminInquiryActionsHeader = 'true';
-        th.className = 'text-right';
-        header.appendChild(th);
-      }
-
-      const rows = Array.from(table.querySelectorAll('tbody tr')) as HTMLTableRowElement[];
-      rows.forEach(row => {
-        if (row.querySelector('[data-admin-delete-inquiry]')) return;
-        const inquiry = inquiries.find(item => rowMatchesInquiry(row, item));
-        if (!inquiry) return;
-
-        const cell = document.createElement('td');
-        cell.className = 'text-right';
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.adminDeleteInquiry = 'true';
-        button.textContent = 'Delete';
-        button.className = 'rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50';
+        button.textContent = 'Delete request';
+        button.className = 'mt-3 rounded-xl border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50';
         button.addEventListener('click', async () => {
           if (!auth?.currentUser) return alert('Your admin session has expired. Please sign in again.');
           const name = inquiry.name || inquiry.email || inquiry.phone || 'this client request';
@@ -74,15 +48,14 @@ export default function AdminInquiryActions() {
           try {
             await deleteInquiry(inquiry.id);
             inquiries = inquiries.filter(item => item.id !== inquiry.id);
-            row.remove();
+            article.remove();
           } catch (error) {
             alert(error instanceof Error ? error.message : 'Could not delete the client request.');
             button.disabled = false;
-            button.textContent = 'Delete';
+            button.textContent = 'Delete request';
           }
         });
-        cell.appendChild(button);
-        row.appendChild(cell);
+        article.appendChild(button);
       });
     };
 
