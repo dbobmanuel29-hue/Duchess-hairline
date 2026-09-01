@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, getDocs, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, getDocsFromServer, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type InquiryStatus = 'new' | 'contacted' | 'confirmed' | 'completed' | 'cancelled';
@@ -21,9 +21,8 @@ export async function createInquiry(data: Omit<Inquiry, 'id' | 'status' | 'creat
 }
 
 export async function listInquiries(): Promise<Inquiry[]> {
-  // Deliberately avoid a composite/createdAt index here. The dashboard must
-  // still work with older inquiry documents and on a fresh Firestore project.
-  const snap = await getDocs(collection(requireDb(), 'inquiries'));
+  // Refresh must always ask Firestore for the latest server state.
+  const snap = await getDocsFromServer(collection(requireDb(), 'inquiries'));
   return snap.docs
     .map(item => ({ id: item.id, ...item.data() } as Inquiry))
     .sort((a, b) => {
