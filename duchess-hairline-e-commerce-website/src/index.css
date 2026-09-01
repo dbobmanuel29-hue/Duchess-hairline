@@ -52,6 +52,21 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed}
 .dashboard-shell button.bg-white{color:#111!important}
 .dashboard-shell button.bg-white:hover{color:#111!important}
 
+/* Desktop page heroes: give the wide editorial photography enough vertical room to remain readable on laptops/desktops.
+   This targets the shared About/Contact/Collection hero photography only; the Home hero uses a different source. */
+@media (min-width:1024px){
+  main > section:first-of-type > img.absolute[src*="9579282"],
+  main > section:first-of-type > img.absolute[src*="1498362"]{
+    object-fit:cover;
+    object-position:center 28%;
+  }
+  main > section:first-of-type:has(> img.absolute[src*="9579282"]),
+  main > section:first-of-type:has(> img.absolute[src*="1498362"]){
+    height:min(64vh,620px);
+    min-height:440px;
+  }
+}
+
 @media (max-width:1023px){
   .dashboard-sidebar{position:fixed;inset:0 auto 0 0;z-index:70;width:min(86vw,320px);height:100dvh}
   .dashboard-content{width:100%;min-width:0;margin-left:0}
