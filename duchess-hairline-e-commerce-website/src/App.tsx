@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import MobileNav from './components/MobileNav';
 import WhatsAppButton from './components/WhatsAppButton';
 import InquiryPrompt from './components/InquiryPrompt';
+import AdminUserActions from './components/AdminUserActions';
 import Home from './pages/Home';
 import Collection from './pages/Collection';
 import ProductPage from './pages/ProductPage';
@@ -28,7 +29,7 @@ export default function App(){
   return <BrowserRouter>
     <ScrollToTop/>
     <Routes>
-      <Route path="/admin" element={<Admin/>}/>
+      <Route path="/admin" element={<><Admin/><AdminUserActions/></>}/>
       <Route path="/login" element={<Login/>}/>
       <Route path="/profile" element={<Profile/>}/>
       <Route path="*" element={<PublicApp/>}/>
