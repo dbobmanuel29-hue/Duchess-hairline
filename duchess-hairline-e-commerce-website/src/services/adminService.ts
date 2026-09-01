@@ -1,4 +1,4 @@
-import { collection, addDoc, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocsFromServer, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { productSeed } from '../data/products.seed';
 import type { Product } from '../types';
@@ -7,7 +7,7 @@ function requireDb() { if (!db) throw new Error('Firebase is not configured.'); 
 
 async function seedCatalogIfEmpty() {
   const firestore = requireDb();
-  const existing = await getDocs(collection(firestore, 'products'));
+  const existing = await getDocsFromServer(collection(firestore, 'products'));
   if (!existing.empty) return;
   await Promise.all(productSeed.map(product => addDoc(collection(firestore, 'products'), {
     ...product,
@@ -18,12 +18,12 @@ async function seedCatalogIfEmpty() {
 
 export async function adminListProducts(): Promise<Product[]> {
   const firestore = requireDb();
-  // Do not require an orderBy index here. Older product documents may not have
-  // createdAt yet, and a missing field/index should never make the catalog vanish.
-  let snapshot = await getDocs(collection(firestore, 'products'));
+  // Refresh must always ask Firestore for the latest server state rather than
+  // reusing a locally cached snapshot.
+  let snapshot = await getDocsFromServer(collection(firestore, 'products'));
   if (snapshot.empty) {
     await seedCatalogIfEmpty();
-    snapshot = await getDocs(collection(firestore, 'products'));
+    snapshot = await getDocsFromServer(collection(firestore, 'products'));
   }
   return snapshot.docs
     .map(item => ({ id: item.id, ...item.data() } as Product))
