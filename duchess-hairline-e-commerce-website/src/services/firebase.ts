@@ -1,5 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  type AppCheck,
+} from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -16,14 +20,21 @@ export const firebaseConfigured = Object.values(firebaseConfig).every(Boolean);
 const app = firebaseConfigured ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
 
 let appCheck: AppCheck | null = null;
-if (app && import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY) {
+
+// App Check is initialized immediately after Firebase and before the app uses
+// Firebase services. Duchess Hairline uses the reCAPTCHA Enterprise provider.
+const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+
+if (app && appCheckSiteKey) {
   try {
     appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY),
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
     });
-  } catch {
-    // App Check is optional until the Firebase web app is configured for it.
+  } catch (error) {
+    // Keep the app usable while App Check is being configured. Enforcement
+    // should only be enabled in Firebase after verified requests are visible.
+    console.warn('Firebase App Check could not be initialized:', error);
     appCheck = null;
   }
 }
