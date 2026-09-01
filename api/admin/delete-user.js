@@ -82,7 +82,14 @@ async function verifyAppCheckToken(token) {
   if (header.alg !== 'RS256' || header.typ !== 'JWT' || !header.kid) {
     throw new Error('Invalid App Check token header.');
   }
-  if (payload.iss !== APP_CHECK_ISSUER) throw new Error('Invalid App Check token issuer.');
+
+  // Firebase App Check issuer contains the Firebase project number:
+  // https://firebaseappcheck.googleapis.com/{project_number}
+  // Do not compare it to the bare issuer URL.
+  if (typeof payload.iss !== 'string' || !payload.iss.startsWith(APP_CHECK_ISSUER)) {
+    throw new Error('Invalid App Check token issuer.');
+  }
+
   const expectedAudience = `projects/${PROJECT_ID}`;
   const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
   if (!audience.includes(expectedAudience)) throw new Error('App Check token is for a different Firebase project.');
