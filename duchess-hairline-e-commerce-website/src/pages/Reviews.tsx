@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { business, routes } from '../config/business';
 import { media } from '../config/media';
 import { generalEnquiryLink } from '../lib/whatsapp';
-import { listReviews, type Review } from '../services/reviewService';
+import { listPublicReviews, type Review } from '../services/reviewService';
 import Reveal from '../components/Reveal';
 import SeoHead from '../components/SeoHead';
 
 export default function Reviews(){
  const [reviews,setReviews]=useState<Review[]>([]); const [loading,setLoading]=useState(true);
- useEffect(()=>{let live=true;listReviews().then(items=>{if(live)setReviews(items.filter(r=>r.approved===true))}).catch(()=>{if(live)setReviews([])}).finally(()=>{if(live)setLoading(false)});return()=>{live=false}},[]);
+ useEffect(()=>{let live=true;listPublicReviews().then(items=>{if(live)setReviews(items)}).catch(()=>{if(live)setReviews([])}).finally(()=>{if(live)setLoading(false)});return()=>{live=false}},[]);
  return <main className="pt-16 md:pt-20 pb-mobile-nav min-h-screen">
   <SeoHead title={`Customer Looks & Reviews — ${business.name}`} description="Verified customer reviews and looks for Duchess Hairline in Port Harcourt."/>
   <section className="relative h-[48vh] md:h-[58vh] min-h-[340px] flex items-end overflow-hidden"><img src={media.editorialAlt} alt="Duchess Hairline customer styling" className="absolute inset-0 w-full h-full object-cover"/><div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10"/><div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pb-14 md:pb-20"><p className="label-text text-white/50 mb-4">Community</p><h1 className="hero-heading text-white leading-[0.92]">REAL PEOPLE.<br/>REAL LOOKS.</h1></div></section>
