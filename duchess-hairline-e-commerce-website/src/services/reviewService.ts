@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocsFromServer, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface Review { id: string; name?: string; text?: string; image?: string; productName?: string; approved?: boolean; createdAt?: unknown; }
@@ -6,13 +6,13 @@ function requireDb(){if(!db)throw new Error('Firebase is not configured.');retur
 
 /** Admin list: returns all reviews, including pending/unapproved submissions. */
 export async function listReviews():Promise<Review[]>{
- const snap=await getDocs(collection(requireDb(),'reviews'));
+ const snap=await getDocsFromServer(collection(requireDb(),'reviews'));
  return sortReviews(snap.docs.map(d=>({id:d.id,...d.data()} as Review)));
 }
 
 /** Public list: query only approved reviews so Firestore rules can safely allow public reads. */
 export async function listPublicReviews():Promise<Review[]>{
- const snap=await getDocs(query(collection(requireDb(),'reviews'),where('approved','==',true)));
+ const snap=await getDocsFromServer(query(collection(requireDb(),'reviews'),where('approved','==',true)));
  return sortReviews(snap.docs.map(d=>({id:d.id,...d.data()} as Review)));
 }
 
