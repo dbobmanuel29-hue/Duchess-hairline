@@ -2,7 +2,44 @@ import type { Product, ProductQuery, SortOption } from '../types';
 import { productSeed } from '../data/products.seed';
 import { hasRemoteApi, request } from './http';
 import { db, firebaseConfigured } from './firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocsFromServer, query, where } from 'firebase/firestore';
+
+function asBool(value: unknown): boolean {
+  return value === true || value === 1 || value === 'true' || value === '1' || value === 'yes' || value === 'on';
+}
+
+function asPrice(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[₦,\s]/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeProduct(id: string, raw: Record<string, unknown>): Product {
+  return {
+    id,
+    name: String(raw.name ?? 'Untitled product'),
+    price: asPrice(raw.price ?? raw.priceValue ?? raw.priceNaira),
+    category: String(raw.category ?? 'bone-straight') as Product['category'],
+    categoryLabel: String(raw.categoryLabel ?? raw.category ?? 'Bone Straight'),
+    length: raw.length == null ? null : String(raw.length),
+    hairType: raw.hairType == null ? null : String(raw.hairType),
+    laceType: raw.laceType == null ? null : String(raw.laceType),
+    density: raw.density == null ? null : String(raw.density),
+    texture: raw.texture == null ? null : String(raw.texture),
+    description: String(raw.description ?? ''),
+    images: Array.isArray(raw.images) ? raw.images.map(String).filter(Boolean) : [],
+    video: raw.video == null ? null : String(raw.video),
+    badge: raw.badge == null ? null : String(raw.badge),
+    available: asBool(raw.available),
+    featured: asBool(raw.featured),
+    newArrival: asBool(raw.newArrival ?? raw.new_arrival),
+    bestSeller: asBool(raw.bestSeller ?? raw.best_seller),
+  };
+}
 
 function matchesSearch(product: Product, search: string): boolean {
   const terms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -46,10 +83,10 @@ async function firebaseProducts(queryValue: ProductQuery = {}): Promise<Product[
   if (!db) return [];
   let q = query(collection(db, 'products'));
   if (queryValue.availableOnly) q = query(collection(db, 'products'), where('available', '==', true));
-  const snap = await getDocs(q);
-  // Firestore is the live source of truth once products exist. If the collection is
-  // empty, retain the original curated catalog until the admin publishes products.
-  const items = snap.empty ? productSeed : snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+  const snap = await getDocsFromServer(q);
+  // Normalize every Firestore document so older products and newly-created products
+  // use the exact same price/flag shape on Home and Collection.
+  const items = snap.empty ? productSeed : snap.docs.map(d => normalizeProduct(d.id, d.data() as Record<string, unknown>));
   return applyQuery(items, queryValue);
 }
 
@@ -59,8 +96,6 @@ export async function listProducts(queryValue: ProductQuery = {}): Promise<Produ
     try {
       return await firebaseProducts(queryValue);
     } catch (error) {
-      // Never leave the public collection blank because of a transient Firebase
-      // permission/network problem. The curated seed remains a safe read-only fallback.
       console.warn('Firestore product read failed; showing the curated catalog fallback.', error);
       return applyQuery(productSeed, queryValue);
     }
