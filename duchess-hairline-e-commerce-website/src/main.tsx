@@ -3,10 +3,13 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import AppErrorBoundary from "./components/AppErrorBoundary";
+import { installUiBrandingSanitizer } from "./utils/uiBranding";
 
 const root = document.getElementById("root");
 
 if (!root) throw new Error("Duchess Hairline root element was not found.");
+
+installUiBrandingSanitizer();
 
 createRoot(root).render(
   <StrictMode>
