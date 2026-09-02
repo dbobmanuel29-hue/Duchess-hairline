@@ -49,11 +49,24 @@ export default async function handler(req, res) {
     if (!idToken) return sendJson(res, 401, { error: 'Authentication required.' });
 
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
-    const adminSnap = await firestore.collection('admins').doc(decodedToken.uid).get();
-    const adminData = adminSnap.data();
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
-    if (!adminSnap.exists || adminData?.role !== 'admin' || adminData?.active !== true) {
-      return sendJson(res, 403, { error: 'Admin access required.' });
+    const allowedFolders = new Set([
+      'duchess-hairline/products',
+      'duchess-hairline/profiles',
+      'duchess-hairline/testimonials',
+    ]);
+    const folder = allowedFolders.has(body.folder) ? body.folder : 'duchess-hairline/products';
+
+    // Profile photos are allowed for any authenticated user.
+    // Product and testimonial uploads remain restricted to active admins.
+    if (folder !== 'duchess-hairline/profiles') {
+      const adminSnap = await firestore.collection('admins').doc(decodedToken.uid).get();
+      const adminData = adminSnap.data();
+
+      if (!adminSnap.exists || adminData?.role !== 'admin' || adminData?.active !== true) {
+        return sendJson(res, 403, { error: 'Admin access required.' });
+      }
     }
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -65,13 +78,6 @@ export default async function handler(req, res) {
       return sendJson(res, 500, { error: 'Image upload is not configured.' });
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const allowedFolders = new Set([
-      'duchess-hairline/products',
-      'duchess-hairline/profiles',
-      'duchess-hairline/testimonials',
-    ]);
-    const folder = allowedFolders.has(body.folder) ? body.folder : 'duchess-hairline/products';
     const timestamp = Math.floor(Date.now() / 1000);
     const signatureBase = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
     const signature = crypto.createHash('sha1').update(signatureBase).digest('hex');
