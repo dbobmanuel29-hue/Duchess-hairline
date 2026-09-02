@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { firebaseConfigured } from '../services/firebase';
 import { isAdmin, registerWithEmail, registerWithGoogle, sendPasswordReset, signInWithEmail, signInWithGoogle } from '../services/authService';
 
 function GoogleMark() { return <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5"><path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.23a4.46 4.46 0 0 1-1.94 2.93v2.43h3.14c1.84-1.69 2.92-4.18 2.92-7.19Z"/><path fill="#34A853" d="M12 21.75c2.63 0 4.84-.87 6.45-2.36l-3.14-2.43c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.5A9.75 9.75 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.54 13.85a5.86 5.86 0 0 1 0-3.7v-2.5H3.3a9.76 9.76 0 0 0 0 8.7l3.24-2.5Z"/><path fill="#EA4335" d="M12 6.12c1.43 0 2.72.49 3.73 1.46l2.8-2.8C16.84 3.17 14.63 2.25 12 2.25a9.75 9.75 0 0 0-8.7 5.4l3.24 2.5C7.31 7.84 9.46 6.12 12 6.12Z"/></svg>; }
 
 export default function Login() {
-  const navigate = useNavigate(); const [mode,setMode]=useState<'signin'|'signup'>('signin'); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [error,setError]=useState(''); const [notice,setNotice]=useState(''); const [busy,setBusy]=useState(false); const [resetOpen,setResetOpen]=useState(false); const [resetEmail,setResetEmail]=useState('');
-  if (!firebaseConfigured) return <main className="min-h-screen grid place-items-center bg-warm-white p-6"><div className="max-w-md rounded-2xl bg-white p-8 shadow"><h1 className="text-2xl font-semibold">Account access unavailable</h1><p className="mt-3 text-sm text-neutral-600">Firebase is not connected yet. Configure the VITE_FIREBASE_* variables in Vercel and redeploy.</p></div></main>;
-  const clear=()=>{setError('');setNotice('')}; const finish=async(user:import('firebase/auth').User)=>{if(await isAdmin(user)) navigate('/admin',{replace:true}); else navigate('/',{replace:true});};
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mode,setMode]=useState<'signin'|'signup'>('signin'); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [error,setError]=useState(''); const [notice,setNotice]=useState(''); const [busy,setBusy]=useState(false); const [resetOpen,setResetOpen]=useState(false); const [resetEmail,setResetEmail]=useState('');
+  const returnTo = new URLSearchParams(location.search).get('returnTo');
+  const safeReturnTo = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
+  if (!firebaseConfigured) return <main className="min-h-screen grid place-items-center bg-warm-white p-6"><div className="max-w-md rounded-2xl bg-white p-8 shadow"><h1 className="text-2xl font-semibold">Account access unavailable</h1><p className="mt-3 text-sm text-neutral-600">Account access is not connected yet. Please try again later.</p></div></main>;
+  const clear=()=>{setError('');setNotice('')}; const finish=async(user:import('firebase/auth').User)=>{if(await isAdmin(user)) navigate('/admin',{replace:true}); else navigate(safeReturnTo,{replace:true});};
   const submit=async(e:React.FormEvent)=>{e.preventDefault();clear();setBusy(true);try{if(mode==='signin'){await finish(await signInWithEmail(email,password));}else{const r=await registerWithEmail(email,password);setNotice(`Account created for ${r.email}. You can now use it for client requests.`);setMode('signin');setPassword('');}}catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}finally{setBusy(false)}};
   const google=async()=>{clear();setBusy(true);try{const u=await signInWithGoogle();await finish(u)}catch(err){setError(err instanceof Error?err.message:'Google authentication failed.')}finally{setBusy(false)}};
   const reset=async(e:React.FormEvent)=>{e.preventDefault();clear();setBusy(true);try{await sendPasswordReset(resetEmail);setNotice('Password reset email sent. Check your inbox and follow the link to choose a new password.');setResetOpen(false);setResetEmail('');}catch(err){setError(err instanceof Error?err.message:'Unable to send password reset email.')}finally{setBusy(false)}};
