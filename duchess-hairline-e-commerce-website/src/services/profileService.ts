@@ -18,30 +18,51 @@ export async function ensureUserProfile(user: User) {
   const ref = doc(db, 'users', user.uid);
   const existing = await getDoc(ref);
   const provider = user.providerData[0]?.providerId ?? 'password';
-  const base = {
+
+  // Firestore is the source of truth for editable profile fields. Firebase Auth
+  // may not contain a phone number and can contain an older display name, so do
+  // not overwrite saved profile data when the user logs in again.
+  const authFields = {
     uid: user.uid,
-    name: user.displayName ?? '',
     email: user.email ?? '',
-    phone: user.phoneNumber ?? '',
-    photoURL: user.photoURL ?? '',
     provider,
   };
 
   if (!existing.exists()) {
-    await setDoc(ref, { ...base, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(ref, {
+      ...authFields,
+      name: user.displayName ?? '',
+      phone: user.phoneNumber ?? '',
+      photoURL: user.photoURL ?? '',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
     return;
   }
 
   const current = existing.data() as Partial<UserProfile>;
-  const changed = current.uid !== base.uid
-    || current.name !== base.name
-    || current.email !== base.email
-    || current.phone !== base.phone
-    || current.photoURL !== base.photoURL
-    || current.provider !== base.provider;
+  const changed = current.uid !== authFields.uid
+    || current.email !== authFields.email
+    || current.provider !== authFields.provider;
 
-  // Avoid a write on every auth-state restoration when the profile is already in sync.
-  if (changed) await setDoc(ref, { ...base, updatedAt: serverTimestamp() }, { merge: true });
+  // Only synchronize identity fields that are owned by authentication. Never
+  // replace the user's saved name, phone number, or profile photo on login.
+  if (changed) {
+    await setDoc(ref, { ...authFields, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  // Keep the Firebase Auth display name/photo in sync with the saved profile
+  // so the current session also reflects the values stored in Firestore.
+  if (auth?.currentUser?.uid === user.uid) {
+    const savedName = typeof current.name === 'string' ? current.name : '';
+    const savedPhotoURL = typeof current.photoURL === 'string' ? current.photoURL : '';
+    if ((user.displayName ?? '') !== savedName || (user.photoURL ?? '') !== savedPhotoURL) {
+      await updateProfile(auth.currentUser, {
+        displayName: savedName || null,
+        photoURL: savedPhotoURL || null,
+      });
+    }
+  }
 }
 
 export async function getUserProfile(uid: string) {
