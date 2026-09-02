@@ -17,6 +17,8 @@ export interface Product {
   featured: boolean;
   newArrival: boolean;
   bestSeller: boolean;
+  /** Firestore/server creation timestamp used to surface newly added products first. */
+  createdAt?: unknown;
 }
 
 export type CategorySlug =
