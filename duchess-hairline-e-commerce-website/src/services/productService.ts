@@ -18,6 +18,23 @@ function asPrice(value: unknown): number | null {
   return null;
 }
 
+function timestampMillis(value: unknown): number {
+  if (!value) return 0;
+  if (typeof (value as { toMillis?: () => number }).toMillis === 'function') {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const seconds = (value as { seconds?: number; _seconds?: number }).seconds ?? (value as { _seconds?: number })._seconds;
+    if (typeof seconds === 'number') return seconds * 1000;
+  }
+  return 0;
+}
+
 function normalizeProduct(id: string, raw: Record<string, unknown>): Product {
   return {
     id,
@@ -38,6 +55,7 @@ function normalizeProduct(id: string, raw: Record<string, unknown>): Product {
     featured: asBool(raw.featured),
     newArrival: asBool(raw.newArrival ?? raw.new_arrival),
     bestSeller: asBool(raw.bestSeller ?? raw.best_seller),
+    createdAt: raw.createdAt ?? raw.created_at ?? null,
   };
 }
 
@@ -52,10 +70,16 @@ function matchesSearch(product: Product, search: string): boolean {
 function sortProducts(items: Product[], sort: SortOption = 'featured'): Product[] {
   const sorted = [...items];
   switch (sort) {
-    case 'newest': return [...sorted.filter(p => p.newArrival), ...sorted.filter(p => !p.newArrival)];
+    case 'newest':
+      return sorted.sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt));
     case 'price-asc': return sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     case 'price-desc': return sorted.sort((a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity));
-    default: return sorted.sort((a, b) => Number(b.featured) - Number(a.featured));
+    default:
+      return sorted.sort((a, b) => {
+        const featuredDifference = Number(b.featured) - Number(a.featured);
+        if (featuredDifference) return featuredDifference;
+        return timestampMillis(b.createdAt) - timestampMillis(a.createdAt);
+      });
   }
 }
 
@@ -84,8 +108,6 @@ async function firebaseProducts(queryValue: ProductQuery = {}): Promise<Product[
   let q = query(collection(db, 'products'));
   if (queryValue.availableOnly) q = query(collection(db, 'products'), where('available', '==', true));
   const snap = await getDocsFromServer(q);
-  // Normalize every Firestore document so older products and newly-created products
-  // use the exact same price/flag shape on Home and Collection.
   const items = snap.empty ? productSeed : snap.docs.map(d => normalizeProduct(d.id, d.data() as Record<string, unknown>));
   return applyQuery(items, queryValue);
 }
