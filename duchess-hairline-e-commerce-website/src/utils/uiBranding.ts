@@ -8,6 +8,8 @@ const replacements: Array<[RegExp, string]> = [
   [/refreshed from Firebase/gi, "data refreshed"],
   [/Firebase is not connected/gi, "Store connection unavailable"],
   [/Add the VITE_FIREBASE_\* environment variables in Vercel and redeploy\./gi, "The store connection is not configured. Please contact the site administrator."],
+  [/Cloud Firestore/gi, "store database"],
+  [/Firestore/gi, "store database"],
   [/Firebase/gi, "store services"],
 ];
 
