@@ -25,9 +25,23 @@ export async function ensureUserProfile(user: User) {
     phone: user.phoneNumber ?? '',
     photoURL: user.photoURL ?? '',
     provider,
-    updatedAt: serverTimestamp(),
   };
-  await setDoc(ref, existing.exists() ? base : { ...base, createdAt: serverTimestamp() }, { merge: true });
+
+  if (!existing.exists()) {
+    await setDoc(ref, { ...base, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    return;
+  }
+
+  const current = existing.data() as Partial<UserProfile>;
+  const changed = current.uid !== base.uid
+    || current.name !== base.name
+    || current.email !== base.email
+    || current.phone !== base.phone
+    || current.photoURL !== base.photoURL
+    || current.provider !== base.provider;
+
+  // Avoid a write on every auth-state restoration when the profile is already in sync.
+  if (changed) await setDoc(ref, { ...base, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 export async function getUserProfile(uid: string) {
