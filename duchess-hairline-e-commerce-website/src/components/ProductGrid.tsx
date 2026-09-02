@@ -51,9 +51,9 @@ export default function ProductGrid({
 
   if (error) {
     return (
-      <div className="text-center py-20">
-        <p className="font-display text-2xl text-charcoal/70 mb-2">Something went wrong</p>
-        <p className="text-sm text-charcoal/50">{error}</p>
+      <div className="text-center py-20" role="status">
+        <p className="font-display text-2xl text-charcoal/70 mb-2">We couldn't load these wigs</p>
+        <p className="text-sm text-charcoal/50">Please refresh the page and try again.</p>
       </div>
     );
   }
