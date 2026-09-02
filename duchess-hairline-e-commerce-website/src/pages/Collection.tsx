@@ -31,7 +31,8 @@ export default function Collection() {
     newArrival,
     bestSeller,
     availableOnly,
-    sort: newArrival ? 'newest' : sort,
+    // Category pages should surface the most recently published product first.
+    sort: (newArrival || Boolean(category)) ? 'newest' : sort,
   }), [category, search, featured, newArrival, bestSeller, availableOnly, sort]);
 
   const { products, loading, error } = useProducts(query);
