@@ -45,22 +45,30 @@ export function useProduct(id: string | undefined) {
   useEffect(() => {
     if (!id) {
       setProduct(null);
+      setRelated([]);
       setLoading(false);
       return;
     }
 
     let active = true;
     setLoading(true);
+    setError(null);
 
     getProduct(id)
       .then(async (found) => {
         if (!active) return;
         setProduct(found);
-        setError(null);
-        setRelated(found ? await listRelated(found) : []);
+        if (found) {
+          const relatedItems = await listRelated(found, 5);
+          if (active) setRelated(relatedItems.slice(0, 4));
+        } else {
+          setRelated([]);
+        }
       })
       .catch(() => {
         if (!active) return;
+        setProduct(null);
+        setRelated([]);
         setError('We could not load this wig. Please try again.');
       })
       .finally(() => {
