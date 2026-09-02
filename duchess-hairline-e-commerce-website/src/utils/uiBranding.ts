@@ -43,40 +43,57 @@ function sanitizeNode(root: Node): void {
 export function installUiBrandingSanitizer(): () => void {
   if (typeof document === "undefined") return () => undefined;
 
-  sanitizeNode(document.body);
+  let observer: MutationObserver | null = null;
+  let onReady: (() => void) | null = null;
 
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === "characterData" && mutation.target.nodeType === Node.TEXT_NODE) {
-        const node = mutation.target as Text;
-        const cleaned = cleanText(node.nodeValue ?? "");
-        if (cleaned !== node.nodeValue) node.nodeValue = cleaned;
-        return;
-      }
+  const start = () => {
+    if (observer || !document.body) return;
 
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          const text = node as Text;
-          const cleaned = cleanText(text.nodeValue ?? "");
-          if (cleaned !== text.nodeValue) text.nodeValue = cleaned;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          sanitizeNode(node);
+    sanitizeNode(document.body);
+
+    observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "characterData" && mutation.target.nodeType === Node.TEXT_NODE) {
+          const node = mutation.target as Text;
+          const cleaned = cleanText(node.nodeValue ?? "");
+          if (cleaned !== node.nodeValue) node.nodeValue = cleaned;
+          return;
+        }
+
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node as Text;
+            const cleaned = cleanText(text.nodeValue ?? "");
+            if (cleaned !== text.nodeValue) text.nodeValue = cleaned;
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            sanitizeNode(node);
+          }
+        });
+
+        if (mutation.type === "attributes" && mutation.target instanceof Element) {
+          sanitizeNode(mutation.target);
         }
       });
-
-      if (mutation.type === "attributes" && mutation.target instanceof Element) {
-        sanitizeNode(mutation.target);
-      }
     });
-  });
 
-  observer.observe(document.body, {
-    subtree: true,
-    childList: true,
-    characterData: true,
-    attributes: true,
-    attributeFilter: ["title", "aria-label", "placeholder", "data-tooltip"],
-  });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["title", "aria-label", "placeholder", "data-tooltip"],
+    });
+  };
 
-  return () => observer.disconnect();
+  if (document.body) {
+    start();
+  } else {
+    onReady = start;
+    document.addEventListener("DOMContentLoaded", onReady, { once: true });
+  }
+
+  return () => {
+    observer?.disconnect();
+    if (onReady) document.removeEventListener("DOMContentLoaded", onReady);
+  };
 }
