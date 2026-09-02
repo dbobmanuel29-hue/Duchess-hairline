@@ -22,7 +22,7 @@ export async function uploadToCloudinary(
     throw new Error('Image upload is not configured.');
   }
   if (!auth?.currentUser) {
-    throw new Error('Please sign in as an administrator before uploading images.');
+    throw new Error('Please sign in before uploading images.');
   }
   if (!file) throw new Error('Please choose a file first.');
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
