@@ -3,16 +3,29 @@ import { getAppCheck } from 'firebase-admin/app-check';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'duchess-hairline';
-
 function adminApp() {
   if (getApps().length) return getApps()[0];
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw Object.assign(new Error('Firebase server credentials are not configured.'), { status: 500, code: 'config/missing-service-account' });
+  if (!raw) throw Object.assign(new Error('Firebase server credentials are not configured in Vercel Production.'), { status: 500, code: 'config/missing-service-account' });
+
   let serviceAccount;
-  try { serviceAccount = JSON.parse(raw); }
-  catch { throw Object.assign(new Error('Firebase server credentials are invalid JSON.'), { status: 500, code: 'config/invalid-service-account' }); }
-  return initializeApp({ credential: cert(serviceAccount), projectId: PROJECT_ID });
+  try {
+    serviceAccount = JSON.parse(raw);
+  } catch {
+    throw Object.assign(new Error('Firebase server credentials contain invalid JSON.'), { status: 500, code: 'config/invalid-service-account-json' });
+  }
+
+  if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+    throw Object.assign(new Error('Firebase service account is incomplete. It must contain project_id, client_email and private_key.'), { status: 500, code: 'config/incomplete-service-account' });
+  }
+
+  // Use the project ID from the service account itself. This prevents a stale
+  // FIREBASE_PROJECT_ID environment variable from pointing Admin SDK at a
+  // different Firebase project than the credentials belong to.
+  return initializeApp({
+    credential: cert(serviceAccount),
+    projectId: serviceAccount.project_id,
+  });
 }
 
 function send(res, status, body) {
@@ -47,10 +60,17 @@ async function requireAdmin(req) {
     throw Object.assign(new Error('Your admin Firebase session is no longer valid. Sign out and sign in again.'), { status: 401, code: error?.code || 'auth/invalid-token' });
   }
 
-  const adminSnap = await getFirestore(app).collection('admins').doc(decoded.uid).get();
-  if (!adminSnap.exists || adminSnap.data()?.role !== 'admin' || adminSnap.data()?.active !== true) {
-    throw Object.assign(new Error('Admin access required.'), { status: 403, code: 'admin/forbidden' });
+  try {
+    const adminSnap = await getFirestore(app).collection('admins').doc(decoded.uid).get();
+    if (!adminSnap.exists || adminSnap.data()?.role !== 'admin' || adminSnap.data()?.active !== true) {
+      throw Object.assign(new Error('Admin access required.'), { status: 403, code: 'admin/forbidden' });
+    }
+  } catch (error) {
+    if (error?.status) throw error;
+    console.error('admin/list-users admin document:', error);
+    throw Object.assign(new Error(`Could not verify the admin account in Firestore: ${error?.message || 'unknown Firestore error'}`), { status: 500, code: error?.code || 'firestore/admin-check-failed' });
   }
+
   return { app };
 }
 
@@ -60,17 +80,24 @@ export default async function handler(req, res) {
 
   try {
     const { app } = await requireAdmin(req);
+    const auth = getAuth(app);
     const users = [];
-    let page = await getAuth(app).listUsers(1000);
-    while (page) {
-      users.push(...page.users);
-      if (!page.pageToken) break;
-      page = await getAuth(app).listUsers(1000, page.pageToken);
+
+    try {
+      let page = await auth.listUsers(1000);
+      while (page) {
+        users.push(...page.users);
+        if (!page.pageToken) break;
+        page = await auth.listUsers(1000, page.pageToken);
+      }
+    } catch (error) {
+      console.error('admin/list-users Firebase Auth listUsers:', error);
+      throw Object.assign(
+        new Error(`Firebase Authentication user listing failed: ${error?.message || 'unknown Firebase Auth error'}`),
+        { status: 500, code: error?.code || 'auth/list-users-failed' },
+      );
     }
 
-    // Firebase Authentication is the source of truth for this dashboard list.
-    // Firestore profiles are deliberately not required here, so stale or missing
-    // users/{uid} documents cannot make the Auth user list fail.
     const result = users.map(user => ({
       id: user.uid,
       uid: user.uid,
