@@ -38,9 +38,19 @@ service cloud.firestore {
       // A customer can only access their own profile. Admins can read profiles
       // for the dashboard user list, but customers cannot enumerate other users.
       allow read: if admin() || (signedIn() && request.auth.uid == uid);
-      allow create, update: if signedIn()
+      // Firebase Auth owns these identity fields. Customers may set editable
+      // profile fields such as name, phone and photoURL, but cannot rewrite uid,
+      // email or provider in Firestore to impersonate another account.
+      allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.uid == uid;
+        && request.resource.data.uid == uid
+        && request.resource.data.email == (request.auth.token.email == null ? '' : request.auth.token.email);
+      allow update: if admin()
+        || (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.provider == resource.data.provider);
       allow delete: if admin();
     }
 
